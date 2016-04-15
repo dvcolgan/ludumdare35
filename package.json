@@ -1,0 +1,29 @@
+{
+  "name": "ludumdare35",
+  "version": "0.1.0",
+  "description": "Ludum Dare 35",
+  "main": "assets/main.js",
+  "scripts": {
+    "start": "npm run watch & npm run static",
+    "deploy": "./deploy.sh",
+    "static": "http-server assets/ -p 8000 -s",
+    "watch": "watchify src/main.coffee -g coffeeify --fast --extension .js --extension .coffee -o assets/bundle.js -dv",
+    "build": "browserify src/main.coffee -g coffeeify --fast --extension .js --extension .coffee -o assets/bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/dvcolgan/ludumdare35"
+  },
+  "author": "David Colgan, Dain Van Epps",
+  "homepage": "http://www.lessboring.com/ludumdare35",
+  "dependencies": {
+    "coffee-script": "^1.10.0",
+    "deodorant": "^2.2.2"
+  },
+  "devDependencies": {
+    "browserify": "^11.2.0",
+    "coffeeify": "^1.1.0",
+    "watchify": "^3.4.0",
+    "http-server": "^0.8.5"
+  }
+}
