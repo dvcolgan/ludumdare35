@@ -1,2 +1,1 @@
-Allow moving between rooms 
 Put in sounds, maybe with sound sprites?  https://github.com/tonistiigi/audiosprite

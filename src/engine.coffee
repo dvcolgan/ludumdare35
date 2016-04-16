@@ -20,9 +20,8 @@ module.exports = types.checkClass class Engine
     preload: =>
         for key, level of levels
             @game.load.image(level.background, "backgrounds/#{level.background}.png")
-        #@game.load.tilemap('level', 'level.csv', null, Phaser.Tilemap.CSV)
         @game.load.image('player', 'player.png')
-        @game.load.image('toilet', 'toilet.png')
+        @game.load.spritesheet('toilet', 'toilet.png', 130, 284, 2)
         @game.load.image('tiles', 'tiles.png')
         @parseLevels()
 
@@ -43,10 +42,17 @@ module.exports = types.checkClass class Engine
 
     create: =>
 
-        @roomCol = 0
+        @roomCol = 1
         @roomRow = 0
 
-        @cursors = game.input.keyboard.createCursorKeys()
+        @keys = @game.input.keyboard.addKeys
+            jump: Phaser.KeyCode.COMMA
+            interact: Phaser.KeyCode.O
+            left: Phaser.KeyCode.A
+            right: Phaser.KeyCode.E
+            space: Phaser.KeyCode.SPACEBAR
+            prevWeapon: Phaser.KeyCode.QUOTES
+            nextWeapon: Phaser.KeyCode.PERIOD
 
         @game.time.desiredFps = 60
         @game.physics.startSystem(Phaser.Physics.ARCADE)
@@ -86,12 +92,30 @@ module.exports = types.checkClass class Engine
         @layer = @tilemap.createLayer(0)
         @layer.resizeWorld()
 
+        level.callback?(@)
+
         #if @background2 then @background2.destroy()
         #@background2 = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, level.background)
         #@background2.blendMode = PIXI.blendModes.OVERLAY
+    
+    spawnActor: (x, y) ->
+        @actor = @game.add.sprite(x, y, 'toilet')
+        @actor.animations.add('open', [2, 1, 1, 1, 0])
+        @actor.animations.add('closed', [0, 1, 2, 2, 2, 1, 2])
+        @actor.animations.play('open')
+        @game.physics.arcade.enable(@actor)
+        @actor.body.bounce.set(1.0)
+        @actor.update = =>
+            if @actor.body.velocity.y > 0 and @actor.animations.currentAnim.name == 'closed'
+                @actor.animations.play('open')
+            else if @actor.body.velocity.y < 0 and @actor.animations.currentAnim.name == 'open'
+                @actor.animations.play('closed')
+        return @actor
 
     update: =>
+        @game.physics.arcade.collide(@player, @actor)
         @game.physics.arcade.collide(@player, @layer)
+        @game.physics.arcade.collide(@actor, @layer)
 
         if @player.x < 0
             if levels["#{@roomCol-1}x#{@roomRow}"]?
@@ -115,11 +139,12 @@ module.exports = types.checkClass class Engine
                 @loadMap()
 
         @player.body.velocity.x = 0
+        if @player.body.velocity.y > 400 then @player.body.velocity.y = 600
 
-        if @cursors.left.isDown
+        if @keys.left.isDown
             @player.body.velocity.x = -400
-        if @cursors.right.isDown
+        if @keys.right.isDown
             @player.body.velocity.x = 400
-        if @cursors.up.isDown
-            @player.body.velocity.y = -400
+        if @keys.jump.isDown
+            @player.body.velocity.y = -600
 
