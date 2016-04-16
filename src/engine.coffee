@@ -146,7 +146,7 @@ module.exports = types.checkClass class Engine
 
         if @keys.a.isDown
             @player.body.velocity.x = -400
-        if @keys.e.isDown or @keys.s.isDown
+        if @keys.e.isDown or @keys.d.isDown
             @player.body.velocity.x = 400
         if @keys.comma.isDown or @keys.w.isDown
             @player.body.velocity.y = -600
