@@ -3,17 +3,6 @@ module.exports =
         callback: ->
             #boss = @engine.spawnActor(400, 200)
             #@actor = @game.add.sprite(400, 200, 'toilet')
-            #@actor.animations.add('open', [2, 1, 1, 1, 0])
-            #@actor.animations.add('closed', [0, 1, 2, 2, 2, 1, 2])
-            #@actor.animations.play('open')
-            #@game.physics.arcade.enable(@actor)
-            #@actor.body.bounce.set(1.0)
-            #@actor.update = =>
-            #    if @actor.body.velocity.y > 0 and @actor.animations.currentAnim.name == 'closed'
-            #        @actor.animations.play('open')
-            #    else if @actor.body.velocity.y < 0 and @actor.animations.currentAnim.name == 'open'
-            #        @actor.animations.play('closed')
-            #return @actor
             
         background: 'kitchen'
         tiles: """

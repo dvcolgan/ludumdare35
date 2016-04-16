@@ -34,6 +34,17 @@ class Boss
         @sprite.body.bounce.set(0.7)
         @sprite.body.drag.set(40)
 
+        @sprite.animations.add('open', [2, 1, 1, 1, 0])
+        @sprite.animations.add('closed', [0, 1, 2, 2, 2, 1, 2])
+        @sprite.animations.play('open')
+        @game.physics.arcade.enable(@sprite)
+        @sprite.body.bounce.set(1.0)
+        @sprite.update = =>
+            if @sprite.body.velocity.y > 0 and @sprite.animations.currentAnim.name == 'closed'
+                @sprite.animations.play('open')
+            else if @sprite.body.velocity.y < 0 and @sprite.animations.currentAnim.name == 'open'
+                @sprite.animations.play('closed')
+
     randomBounce: ->
         @sprite.body.velocity.y = -800
         @sprite.body.velocity.x = Math.random() * 800 - 400
