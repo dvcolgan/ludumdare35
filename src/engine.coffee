@@ -32,9 +32,8 @@ module.exports = types.checkClass class Engine
         #
 
     create: =>
-        @roomCol = 1
-        @roomRow = 2
-
+        @roomCol = 0
+        @roomRow = 0
 
         @cursors = game.input.keyboard.createCursorKeys()
         @game.time.desiredFps = 60
@@ -52,7 +51,7 @@ module.exports = types.checkClass class Engine
         @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'sink')
         @background.blendMode = PIXI.blendModes.OVERLAY
 
-        @player = @game.add.sprite(0, 0, 'toilet')
+        @player = @game.add.sprite(400, 200, 'player')
 
         @game.physics.enable(@player, Phaser.Physics.ARCADE)
         @player.body.bounce.y = 0.2
@@ -66,15 +65,34 @@ module.exports = types.checkClass class Engine
         #    boundsAlignV: 'middle'
         #
     loadMap: ->
-        @loadMap(levels["_#{@roomCol}_#{@roomRow}"])
-        for rowData, row in tiles
-            for tile, col in rowData
-                @tilemap.putTile(tile, col, row)
+        level = levels["#{@roomCol}x#{@roomRow}"]
+        for rowData, row in level.tiles.trim().split('\n')
+            if row == 0 or row == 23 then continue
+            for tileStr, col in rowData.split('')
+                if col == 0 or col == 41 then continue
+                if tileStr == ' '
+                    tile = null
+                else
+                    tile = parseInt(tileStr)
+
+                @tilemap.putTile(tile, col - 1, row - 1)
 
     update: =>
         if @player.x < 0
             @player.x = SCREEN_WIDTH - @player.body.width
             @roomCol--
+            @loadMap()
+        if @player.x > SCREEN_WIDTH - @player.body.width
+            @player.x = 0
+            @roomCol++
+            @loadMap()
+        if @player.y < 0
+            @player.y = SCREEN_HEIGHT - @player.body.height
+            @roomRow--
+            @loadMap()
+        if @player.y > SCREEN_HEIGHT - @player.body.height
+            @player.y = 0
+            @roomRow++
             @loadMap()
 
         @game.physics.arcade.collide(@player, @layer)
