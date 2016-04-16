@@ -18,43 +18,50 @@ module.exports = types.checkClass class Engine
     doCommand: (command) ->
 
     preload: =>
+        for key, level of levels
+            @game.load.image(level.background, "backgrounds/#{level.background}.png")
+        #@game.load.tilemap('level', 'level.csv', null, Phaser.Tilemap.CSV)
         @game.load.image('player', 'player.png')
         @game.load.image('toilet', 'toilet.png')
         @game.load.image('tiles', 'tiles.png')
-        @game.load.image('forest', 'backgrounds/forest.png')
-        @game.load.image('sink', 'backgrounds/sink.png')
-        @game.load.image('kitchen', 'backgrounds/kitchen.png')
-        #for slug, sprite of @_sprites
-        #    @game.load.spritesheet(slug, sprite.image, sprite.frameSize[0], sprite.frameSize[1])
-        #for slug, path of @_backgrounds
-        #    @game.load.image(slug, path)
-        #@game.load.image('dialog', 'images/dialog-box.png')
-        #
+        @parseLevels()
+
+    parseLevels: ->
+        for key, level of levels
+            mapData = (for rowData, row in level.tiles.trim().split('\n')
+                if row == 0 or row == 23 then continue
+                (for tileStr, col in rowData.split('')
+                    if col == 0 or col == 41 then continue
+                    if tileStr == ' '
+                        tile = '0'
+                    else
+                        tile = parseInt(tileStr)
+                    tile
+                ).join(',')
+            ).join('\n')
+            @game.load.tilemap(key, null, mapData)
 
     create: =>
+
         @roomCol = 0
         @roomRow = 0
 
         @cursors = game.input.keyboard.createCursorKeys()
+
         @game.time.desiredFps = 60
         @game.physics.startSystem(Phaser.Physics.ARCADE)
         @game.physics.arcade.gravity.y = 981
 
-        @background2 = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'sink')
+        @backgroundGroup = @game.add.group()
 
-        @tilemap = @game.add.tilemap(null, TILE_SIZE, TILE_SIZE, 40, 22)
-        @tilemap.addTilesetImage('tiles')
-        @layer = @tilemap.create('level', 40, 22, TILE_SIZE, TILE_SIZE)
-        @tilemap.setCollisionByExclusion([0])
+        @player = @game.add.sprite(600, 400, 'player')
+        @game.physics.arcade.enable(@player)
+        @player.body.fixedRotation = true
+        @player.body.collideWorldBounds = false
+
+
         @loadMap()
 
-        @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'sink')
-        @background.blendMode = PIXI.blendModes.OVERLAY
-
-        @player = @game.add.sprite(400, 200, 'player')
-
-        @game.physics.enable(@player, Phaser.Physics.ARCADE)
-        @player.body.bounce.y = 0.2
         #@player.body.setSize(32, 64, 0, 0)
 
         #@fontStyle =
@@ -64,39 +71,51 @@ module.exports = types.checkClass class Engine
         #    fontWeight: 'bold'
         #    boundsAlignV: 'middle'
         #
-    loadMap: ->
-        level = levels["#{@roomCol}x#{@roomRow}"]
-        for rowData, row in level.tiles.trim().split('\n')
-            if row == 0 or row == 23 then continue
-            for tileStr, col in rowData.split('')
-                if col == 0 or col == 41 then continue
-                if tileStr == ' '
-                    tile = null
-                else
-                    tile = parseInt(tileStr)
+    loadMap: =>
+        key = "#{@roomCol}x#{@roomRow}"
+        level = levels[key]
 
-                @tilemap.putTile(tile, col - 1, row - 1)
+        if @background then @background.destroy()
+        @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, level.background)
+        @backgroundGroup.add(@background)
+
+        if @layer then @layer.destroy()
+        @tilemap = @game.add.tilemap(key, TILE_SIZE, TILE_SIZE)
+        @tilemap.addTilesetImage('tiles')
+        @tilemap.setCollisionByExclusion([0])
+        @layer = @tilemap.createLayer(0)
+        @layer.resizeWorld()
+
+        #if @background2 then @background2.destroy()
+        #@background2 = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, level.background)
+        #@background2.blendMode = PIXI.blendModes.OVERLAY
 
     update: =>
-        if @player.x < 0
-            @player.x = SCREEN_WIDTH - @player.body.width
-            @roomCol--
-            @loadMap()
-        if @player.x > SCREEN_WIDTH - @player.body.width
-            @player.x = 0
-            @roomCol++
-            @loadMap()
-        if @player.y < 0
-            @player.y = SCREEN_HEIGHT - @player.body.height
-            @roomRow--
-            @loadMap()
-        if @player.y > SCREEN_HEIGHT - @player.body.height
-            @player.y = 0
-            @roomRow++
-            @loadMap()
-
         @game.physics.arcade.collide(@player, @layer)
+
+        if @player.x < 0
+            if levels["#{@roomCol-1}x#{@roomRow}"]?
+                @player.x = SCREEN_WIDTH - @player.width - 2
+                @roomCol--
+                @loadMap()
+        else if @player.x > SCREEN_WIDTH - @player.width
+            if levels["#{@roomCol+1}x#{@roomRow}"]?
+                @player.x = 2
+                @roomCol++
+                @loadMap()
+        else if @player.y < 0
+            if levels["#{@roomCol}x#{@roomRow-1}"]?
+                @player.y = SCREEN_HEIGHT - @player.height - 2
+                @roomRow--
+                @loadMap()
+        else if @player.y > SCREEN_HEIGHT - @player.height
+            if levels["#{@roomCol}x#{@roomRow+1}"]?
+                @player.y = 2
+                @roomRow++
+                @loadMap()
+
         @player.body.velocity.x = 0
+
         if @cursors.left.isDown
             @player.body.velocity.x = -400
         if @cursors.right.isDown
