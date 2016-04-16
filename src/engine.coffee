@@ -6,6 +6,31 @@ SCREEN_HEIGHT = 704
 TILE_SIZE = 32
 
 
+class Player
+    constructor: (@game, startX, startY) ->
+        @sprite = @game.add.sprite(startX, startY, 'player')
+        @game.physics.arcade.enable(@sprite)
+        @sprite.body.fixedRotation = true
+        @sprite.body.collideWorldBounds = false
+        @game.groups.actors.add(@sprite)
+
+        @health = 10
+        @hearts = []
+        for i in [0...10]
+            heart = @game.add.sprite(48 + i * 64, 48, 'heart')
+            @hearts.push(heart)
+            @game.groups.ui.add(heart)
+
+    hurt: ->
+        @health--
+        for heart, i in @hearts
+            heart.visible = i < @health
+
+
+class Boss
+    constructor: (@game, startX, startY, key) ->
+        @sprite = @game.add.sprite(startX, startY, key)
+
 
 module.exports = types.checkClass class Engine
     constructor: (@elementId) ->
@@ -21,6 +46,7 @@ module.exports = types.checkClass class Engine
         for key, level of levels
             @game.load.image(level.background, "backgrounds/#{level.background}.png")
         @game.load.image('player', 'player.png')
+        @game.load.image('heart', 'heart.png')
         @game.load.spritesheet('toilet', 'toilet.png', 130, 284, 2)
         @game.load.image('tiles', 'tiles.png')
         @parseLevels()
@@ -61,13 +87,12 @@ module.exports = types.checkClass class Engine
         @game.physics.startSystem(Phaser.Physics.ARCADE)
         @game.physics.arcade.gravity.y = 981
 
-        @backgroundGroup = @game.add.group()
+        @game.groups = {}
+        @game.groups.background = @game.add.group()
+        @game.groups.actors = @game.add.group()
+        @game.groups.ui = @game.add.group()
 
-        @player = @game.add.sprite(600, 400, 'player')
-        @game.physics.arcade.enable(@player)
-        @player.body.fixedRotation = true
-        @player.body.collideWorldBounds = false
-
+        @player = new Player(@game, 600, 400)
 
         @loadMap()
 
@@ -86,7 +111,7 @@ module.exports = types.checkClass class Engine
 
         if @background then @background.destroy()
         @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, level.background)
-        @backgroundGroup.add(@background)
+        @game.groups.background.add(@background)
 
         if @layer then @layer.destroy()
         @tilemap = @game.add.tilemap(key, TILE_SIZE, TILE_SIZE)
@@ -94,6 +119,7 @@ module.exports = types.checkClass class Engine
         @tilemap.setCollisionByExclusion([0])
         @layer = @tilemap.createLayer(0)
         @layer.resizeWorld()
+        @game.groups.background.add(@layer)
 
         level.callback?(@)
 
@@ -102,52 +128,40 @@ module.exports = types.checkClass class Engine
         #@background2.blendMode = PIXI.blendModes.OVERLAY
     
     spawnActor: (x, y) ->
-        @actor = @game.add.sprite(x, y, 'toilet')
-        @actor.animations.add('open', [2, 1, 1, 1, 0])
-        @actor.animations.add('closed', [0, 1, 2, 2, 2, 1, 2])
-        @actor.animations.play('open')
-        @game.physics.arcade.enable(@actor)
-        @actor.body.bounce.set(1.0)
-        @actor.update = =>
-            if @actor.body.velocity.y > 0 and @actor.animations.currentAnim.name == 'closed'
-                @actor.animations.play('open')
-            else if @actor.body.velocity.y < 0 and @actor.animations.currentAnim.name == 'open'
-                @actor.animations.play('closed')
-        return @actor
 
     update: =>
-        @game.physics.arcade.collide(@player, @actor)
-        @game.physics.arcade.collide(@player, @layer)
-        @game.physics.arcade.collide(@actor, @layer)
+        @game.physics.arcade.collide(@player.sprite, @layer)
 
-        if @player.x < 0
+        if @player.sprite.x < 0
             if levels["#{@roomCol-1}x#{@roomRow}"]?
-                @player.x = SCREEN_WIDTH - @player.width - 2
+                @player.sprite.x = SCREEN_WIDTH - @player.sprite.width - 2
                 @roomCol--
                 @loadMap()
-        else if @player.x > SCREEN_WIDTH - @player.width
+        else if @player.sprite.x > SCREEN_WIDTH - @player.sprite.width
             if levels["#{@roomCol+1}x#{@roomRow}"]?
-                @player.x = 2
+                @player.sprite.x = 2
                 @roomCol++
                 @loadMap()
-        else if @player.y < 0
+        else if @player.sprite.y < 0
             if levels["#{@roomCol}x#{@roomRow-1}"]?
-                @player.y = SCREEN_HEIGHT - @player.height - 2
+                @player.sprite.y = SCREEN_HEIGHT - @player.sprite.height - 2
                 @roomRow--
                 @loadMap()
-        else if @player.y > SCREEN_HEIGHT - @player.height
+        else if @player.sprite.y > SCREEN_HEIGHT - @player.sprite.height
             if levels["#{@roomCol}x#{@roomRow+1}"]?
-                @player.y = 2
+                @player.sprite.y = 2
                 @roomRow++
                 @loadMap()
 
-        @player.body.velocity.x = 0
-        if @player.body.velocity.y > 400 then @player.body.velocity.y = 600
+        @player.sprite.body.velocity.x = 0
+        if @player.sprite.body.velocity.y > 400 then @player.sprite.body.velocity.y = 600
 
         if @keys.a.isDown
-            @player.body.velocity.x = -400
+            @player.sprite.body.velocity.x = -400
         if @keys.e.isDown or @keys.d.isDown
-            @player.body.velocity.x = 400
+            @player.sprite.body.velocity.x = 400
         if @keys.comma.isDown or @keys.w.isDown
-            @player.body.velocity.y = -600
+            @player.sprite.body.velocity.y = -600
 
+        if @keys.space.justDown
+            @player.hurt()
