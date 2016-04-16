@@ -46,13 +46,16 @@ module.exports = types.checkClass class Engine
         @roomRow = 0
 
         @keys = @game.input.keyboard.addKeys
-            jump: Phaser.KeyCode.COMMA
-            interact: Phaser.KeyCode.O
-            left: Phaser.KeyCode.A
-            right: Phaser.KeyCode.E
+            comma: Phaser.KeyCode.COMMA
+            o: Phaser.KeyCode.O
+            a: Phaser.KeyCode.A
+            e: Phaser.KeyCode.E
+            w: Phaser.KeyCode.W
+            s: Phaser.KeyCode.S
+            d: Phaser.KeyCode.D
             space: Phaser.KeyCode.SPACEBAR
-            prevWeapon: Phaser.KeyCode.QUOTES
-            nextWeapon: Phaser.KeyCode.PERIOD
+            prevWeapon: Phaser.KeyCode.LEFT
+            nextWeapon: Phaser.KeyCode.RIGHT
 
         @game.time.desiredFps = 60
         @game.physics.startSystem(Phaser.Physics.ARCADE)
@@ -141,10 +144,10 @@ module.exports = types.checkClass class Engine
         @player.body.velocity.x = 0
         if @player.body.velocity.y > 400 then @player.body.velocity.y = 600
 
-        if @keys.left.isDown
+        if @keys.a.isDown
             @player.body.velocity.x = -400
-        if @keys.right.isDown
+        if @keys.e.isDown or @keys.s.isDown
             @player.body.velocity.x = 400
-        if @keys.jump.isDown
+        if @keys.comma.isDown or @keys.w.isDown
             @player.body.velocity.y = -600
 
