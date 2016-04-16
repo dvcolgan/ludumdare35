@@ -30,6 +30,22 @@ class Player
 class Boss
     constructor: (@game, startX, startY, key) ->
         @sprite = @game.add.sprite(startX, startY, key)
+        @game.physics.arcade.enable(@sprite)
+        @sprite.body.bounce.set(0.7)
+        @sprite.body.drag.set(40)
+
+    randomBounce: ->
+        @sprite.body.velocity.y = -800
+        @sprite.body.velocity.x = Math.random() * 800 - 400
+
+    bounceLeft: ->
+        @sprite.body.velocity.y = -800
+        @sprite.body.velocity.x = -400
+
+    bounceRight: ->
+        @sprite.body.velocity.y = -800
+        @sprite.body.velocity.x = 400
+        
 
 
 module.exports = types.checkClass class Engine
@@ -53,6 +69,7 @@ module.exports = types.checkClass class Engine
 
     parseLevels: ->
         for key, level of levels
+            level.callback = level.callback?.bind(@)
             mapData = (for rowData, row in level.tiles.trim().split('\n')
                 if row == 0 or row == 23 then continue
                 (for tileStr, col in rowData.split('')
@@ -82,6 +99,15 @@ module.exports = types.checkClass class Engine
             space: Phaser.KeyCode.SPACEBAR
             prevWeapon: Phaser.KeyCode.LEFT
             nextWeapon: Phaser.KeyCode.RIGHT
+            _1: Phaser.KeyCode.ONE
+            _2: Phaser.KeyCode.TWO
+            _3: Phaser.KeyCode.THREE
+            _4: Phaser.KeyCode.FOUR
+            _5: Phaser.KeyCode.FIVE
+            _6: Phaser.KeyCode.SIX
+            _7: Phaser.KeyCode.SEVEN
+            _8: Phaser.KeyCode.EIGHT
+            _9: Phaser.KeyCode.NINE
 
         @game.time.desiredFps = 60
         @game.physics.startSystem(Phaser.Physics.ARCADE)
@@ -95,6 +121,8 @@ module.exports = types.checkClass class Engine
         @player = new Player(@game, 600, 400)
 
         @loadMap()
+
+        @currentBoss = new Boss(@game, 400, 300, 'toilet')
 
         #@player.body.setSize(32, 64, 0, 0)
 
@@ -131,6 +159,8 @@ module.exports = types.checkClass class Engine
 
     update: =>
         @game.physics.arcade.collide(@player.sprite, @layer)
+        if @currentBoss?
+            @game.physics.arcade.collide(@currentBoss.sprite, @layer)
 
         if @player.sprite.x < 0
             if levels["#{@roomCol-1}x#{@roomRow}"]?
@@ -165,3 +195,16 @@ module.exports = types.checkClass class Engine
 
         if @keys.space.justDown
             @player.hurt()
+
+        if @currentBoss?
+            if @keys._1.justDown
+                @currentBoss.randomBounce()
+            if @keys._2.justDown
+                @currentBoss.bounceLeft()
+            if @keys._3.justDown
+                @currentBoss.bounceRight()
+        total = Math.abs(@currentBoss.sprite.body.velocity.x) + Math.abs(@currentBoss.sprite.body.velocity.y)
+        console.log(total)
+        if total < 100
+            @currentBoss.randomBounce()
+
