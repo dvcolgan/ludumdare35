@@ -6,11 +6,11 @@ SCREEN_HEIGHT = 720
 3 moves
 punch
 kick
-uppercut
+knee
 
 kick beats punch
-punch beats uppercut
-uppercut beats kick
+punch beats knee
+knee beats kick
 
 4 hits to ded someone
 
@@ -132,11 +132,11 @@ class Game
 
             p1_punch: Phaser.KeyCode.ONE
             p1_kick: Phaser.KeyCode.TWO
-            p1_uppercut: Phaser.KeyCode.THREE
+            p1_knee: Phaser.KeyCode.THREE
 
             p2_punch: Phaser.KeyCode.LEFT
             p2_kick: Phaser.KeyCode.DOWN
-            p2_uppercut: Phaser.KeyCode.RIGHT
+            p2_knee: Phaser.KeyCode.RIGHT
 
         @game.time.desiredFps = 60
 
@@ -152,62 +152,62 @@ class Game
         @player1.animations.add('pose', [31,32,33], 10, true)
         @player1.animations.add('idle', [6,7,9], 10, true)
         @player1.animations.add('forward', [11,12,13,14,15], 10, true)
-        @player1.animations.add('punch', [23,24,25,26], 10, true)
-        @player1.animations.add('kick', [23,24,25,26], 10, true)
-        @player1.animations.add('uppercut', [23,24,25,26], 10, true)
+        @player1.animations.add('punch', [31], 10, true)
+        @player1.animations.add('knee', [13], 10, true)
+        @player1.animations.add('kick', [20], 10, true)
         @player1.animations.add('hit', [20,21,22], 10, true)
         @player1.animations.add('die', [10,10,11], 10, true)
         @player1.scale.x = -3
         @player1.scale.y = 3
         @player1.attack = 'idle'
         @player1.animations.play('idle')
-        @player1Health = 50
+        @player1Health = 2500
         @player1HealthDisplay = @game.add.text(20, 20, '||||||||||||||||||||||||||||||||||||||||||||||||||')
 
         @player2 = @game.add.sprite(SCREEN_WIDTH/2 - 50, 100, 'player1')
         @player2.animations.add('pose', [31,32,33], 10, true)
         @player2.animations.add('idle', [6,7,9], 10, true)
         @player2.animations.add('forward', [11,12,13,14,15], 10, true)
-        @player2.animations.add('punch', [23,24,25,26], 10, true)
-        @player2.animations.add('kick', [23,24,25,26], 10, true)
-        @player2.animations.add('uppercut', [23,24,25,26], 10, true)
+        @player2.animations.add('punch', [31], 10, true)
+        @player2.animations.add('knee', [13], 10, true)
+        @player2.animations.add('kick', [20], 10, true)
         @player2.animations.add('hit', [20,21,22], 10, true)
         @player2.animations.add('die', [10,10,11], 10, true)
         @player2.scale.x = 3
         @player2.scale.y = 3
         @player2.attack = 'idle'
-        @player2Health = 50
+        @player2Health = 2500
         @player2HealthDisplay = @game.add.text(SCREEN_WIDTH/2 + 40, 20, '||||||||||||||||||||||||||||||||||||||||||||||||||')
 
     update: =>
-        if @keys.p1_punch.isDown or @keys.p1_kick.isDown or @keys.p1_uppercut.isDown
+        if @keys.p1_punch.isDown or @keys.p1_kick.isDown or @keys.p1_knee.isDown
             if @keys.p1_punch.isDown
                 @player1.attack = 'punch'
             if @keys.p1_kick.isDown
                 @player1.attack = 'kick'
-            if @keys.p1_uppercut.isDown
-                @player1.attack = 'uppercut'
+            if @keys.p1_knee.isDown
+                @player1.attack = 'knee'
         else
             @player1.attack = 'idle'
         if @player1.attack != @player1.animations.currentAnim.name
             @player1.animations.play(@player1.attack)
 
-        if @keys.p2_punch.isDown or @keys.p2_kick.isDown or @keys.p2_uppercut.isDown
+        if @keys.p2_punch.isDown or @keys.p2_kick.isDown or @keys.p2_knee.isDown
             if @keys.p2_punch.isDown
                 @player2.attack = 'punch'
             if @keys.p2_kick.isDown
                 @player2.attack = 'kick'
-            if @keys.p2_uppercut.isDown
-                @player2.attack = 'uppercut'
+            if @keys.p2_knee.isDown
+                @player2.attack = 'knee'
         else
             @player2.attack = 'idle'
         if @player2.attack != @player2.animations.currentAnim.name
             @player2.animations.play(@player2.attack)
 
         if @player1.attack != @player2.attack
-            if @player1.attack == 'punch' and @player2.attack == 'uppercut'
+            if @player1.attack == 'punch' and @player2.attack == 'knee'
                 @player2Health -= 2
-            if @player1.attack == 'uppercut' and @player2.attack == 'kick'
+            if @player1.attack == 'knee' and @player2.attack == 'kick'
                 @player2Health -= 2
             if @player1.attack == 'kick' and @player2.attack == 'punch'
                 @player2Health -= 2
@@ -215,17 +215,17 @@ class Game
                 @player2Health -= 1
 
         if @player2.attack != @player1.attack
-            if @player2.attack == 'punch' and @player1.attack == 'uppercut'
+            if @player2.attack == 'punch' and @player1.attack == 'knee'
                 @player1Health -= 2
-            if @player2.attack == 'uppercut' and @player1.attack == 'kick'
+            if @player2.attack == 'knee' and @player1.attack == 'kick'
                 @player1Health -= 2
             if @player2.attack == 'kick' and @player1.attack == 'punch'
                 @player1Health -= 2
             if @player1.attack == 'idle'
                 @player1Health -= 1
 
-        @player1HealthDisplay.text = ('|').repeat(@player1Health)
-        @player2HealthDisplay.text = ('|').repeat(@player2Health)
+        @player1HealthDisplay.text = ('|').repeat(@player1Health/100)
+        @player2HealthDisplay.text = ('|').repeat(@player2Health/100)
 
 window.game = new Game('game')
 
