@@ -1,31 +1,21 @@
-levelGroups =
-    hub: require('src/levels/hub')
-    spoonman: require('src/levels/spoonman')
-
-levels = {}
-for group, levelData of levelGroups
-    for key, level of levelData
-        if key of levels
-            throw new Error("Duplicate key in levels: #{key}")
-        levels[key] = level
-
 SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 704
-TILE_SIZE = 32
+SCREEN_HEIGHT = 720
 
 
-EVENTS = {
-    'POSE'
-    'IDLE'
-    'MOVE_LEFT'
-    'MOVE_RIGHT'
-    'ATTACK'
-    'HIT'
-    'DIE'
-}
+"""
+3 moves
+punch
+kick
+uppercut
 
+kick beats punch
+punch beats uppercut
+uppercut beats kick
 
+4 hits to ded someone
 
+hold the button to hold it out
+"""
 
 
 class Actor
@@ -117,53 +107,6 @@ class Actor
             else
                 @currentEvent = null
 
-    repeat: (@repeatFn) ->
-
-    pose: ->
-        @eventQueue.push(type: EVENTS.POSE, priority: 2)
-
-    idle: (seconds) ->
-        @eventQueue.push(type: EVENTS.IDLE, priority: 1)
-
-    attack: ->
-        @eventQueue.push(type: EVENTS.ATTACK, priority: 3)
-
-    hit: (damage) ->
-        @eventQueue.push({type: EVENTS.HIT, damage, })
-
-    die: ->
-        @eventQueue.push([EVENTS.DIE])
-
-    moveLeft: (dist) ->
-        @eventQueue.push([EVENTS.MOVE_LEFT, dist])
-
-    moveRight: (dist) ->
-        @eventQueue.push([EVENTS.MOVE_RIGHT, dist])
-
-    moveLeftImmediate: ->
-
-    """
-    chase: ->
-        @sprite.body.velocity.x = 100 * Math.abs(@sprite.body.x - @game.player.sprite.body.x)
-
-    stop: ->
-        @sprite.body.velocity.x = 0
-        @sprite.body.velocity.y = 0
-
-    randomBounce: ->
-        @sprite.body.velocity.y = -800
-        @sprite.body.velocity.x = Math.random() * 800 - 400
-
-    bounceLeft: ->
-        @sprite.body.velocity.y = -800
-        @sprite.body.velocity.x = -400
-
-    bounceRight: ->
-        @sprite.body.velocity.y = -800
-        @sprite.body.velocity.x = 400
-    """
-        
-
 
 class Game
     constructor: (@elementId) ->
@@ -176,58 +119,26 @@ class Game
     doCommand: (command) ->
 
     preload: =>
-        for key, level of levels
-            @game.load.image(level.background, "backgrounds/#{level.background}.png")
-        @game.load.spritesheet('player', 'player.png', 116, 160, 36)
+        @game.load.spritesheet('player1', 'player.png', 116, 160, 36)
         @game.load.image('heart', 'heart.png')
+        @game.load.image('kitchen', 'backgrounds/kitchen.png')
+        @game.load.image('sink', 'backgrounds/sink.png')
+        @game.load.image('forest', 'backgrounds/forest.png')
         @game.load.spritesheet('spoonman', 'bosses/spoonmanbig.png', 273, 192, 12)
-        @game.load.spritesheet('toilet', 'toilet.png', 130, 284, 2)
-        @game.load.image('tiles', 'tile.png')
-
-        for key, level of levels
-            level.run = level.run?.bind(@)
-            mapData = (for rowData, row in level.tiles.trim().split('\n')
-                if row == 0 or row == 23 then continue
-                (for tileStr, col in rowData.split('')
-                    if col == 0 or col == 41 then continue
-                    if tileStr == ' '
-                        tile = 0
-                    else
-                        tile = 1
-                    tile
-                ).join(',')
-            ).join('\n')
-            @game.load.tilemap(key, null, mapData)
 
     create: =>
-
-        @roomCol = 3
-        @roomRow = -2
-
         @keys = @game.input.keyboard.addKeys
-            comma: Phaser.KeyCode.COMMA
-            o: Phaser.KeyCode.O
-            a: Phaser.KeyCode.A
-            e: Phaser.KeyCode.E
-            w: Phaser.KeyCode.W
-            s: Phaser.KeyCode.S
-            d: Phaser.KeyCode.D
-            space: Phaser.KeyCode.SPACEBAR
-            prevWeapon: Phaser.KeyCode.LEFT
-            nextWeapon: Phaser.KeyCode.RIGHT
-            _1: Phaser.KeyCode.ONE
-            _2: Phaser.KeyCode.TWO
-            _3: Phaser.KeyCode.THREE
-            _4: Phaser.KeyCode.FOUR
-            _5: Phaser.KeyCode.FIVE
-            _6: Phaser.KeyCode.SIX
-            _7: Phaser.KeyCode.SEVEN
-            _8: Phaser.KeyCode.EIGHT
-            _9: Phaser.KeyCode.NINE
+            confirm: Phaser.KeyCode.SPACEBAR
+
+            p1_punch: Phaser.KeyCode.ONE
+            p1_kick: Phaser.KeyCode.TWO
+            p1_uppercut: Phaser.KeyCode.THREE
+
+            p2_punch: Phaser.KeyCode.LEFT
+            p2_kick: Phaser.KeyCode.DOWN
+            p2_uppercut: Phaser.KeyCode.RIGHT
 
         @game.time.desiredFps = 60
-        @game.physics.startSystem(Phaser.Physics.ARCADE)
-        @game.physics.arcade.gravity.y = 981
 
         @game.groups = {}
         @game.groups.background = @game.add.group()
@@ -235,103 +146,106 @@ class Game
         @game.groups.player = @game.add.group()
         @game.groups.ui = @game.add.group()
 
-        @player = @spawnActor 900, 400, 'player',
-            persistent: true
-            hp: 10,
-            animations:
-                pose: [31,32,33]
-                idle: [6,7,9]
-                forward: [11,12,13,14,15]
-                attack: [23,24,25,26]
-                hit: [20,21,22]
-                die: [10,10,11]
-            create: ->
-                @sprite.scale.x = 1.3
-                @sprite.scale.y = 1.3
-                @sprite.body.setSize(34, 128, 37, 15)
+        @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'forest')
 
-        @loadMap()
+        @player1 = @game.add.sprite(SCREEN_WIDTH/2 + 100, 100, 'player1')
+        @player1.animations.add('pose', [31,32,33], 10, true)
+        @player1.animations.add('idle', [6,7,9], 10, true)
+        @player1.animations.add('forward', [11,12,13,14,15], 10, true)
+        @player1.animations.add('punch', [23,24,25,26], 10, true)
+        @player1.animations.add('kick', [23,24,25,26], 10, true)
+        @player1.animations.add('uppercut', [23,24,25,26], 10, true)
+        @player1.animations.add('hit', [20,21,22], 10, true)
+        @player1.animations.add('die', [10,10,11], 10, true)
+        @player1.scale.x = -3
+        @player1.scale.y = 3
+        @player1.attack = 'idle'
+        @player1.animations.play('idle')
+        @player1Health = 50
+        @player1HealthDisplay = @game.add.text(20, 20, '||||||||||||||||||||||||||||||||||||||||||||||||||')
 
-        #@player.body.setSize(32, 64, 0, 0)
-
-        #@fontStyle =
-        #    font: "26px Monospace"
-        #    fill: "#D7D7D7"
-        #    boundsAlignH: 'center'
-        #    fontWeight: 'bold'
-        #    boundsAlignV: 'middle'
-        #
-    loadMap: ->
-        key = "#{@roomCol}x#{@roomRow}"
-        level = levels[key]
-
-        for sprite in @game.groups.actors.children
-            if not sprite.persistent
-                sprite.destroy()
-
-        if @background then @background.destroy()
-        @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, level.background)
-        @game.groups.background.add(@background)
-
-        if @layer then @layer.destroy()
-        @tilemap = @game.add.tilemap(key, TILE_SIZE, TILE_SIZE)
-        @tilemap.addTilesetImage('tiles')
-        @tilemap.setCollisionByExclusion([0])
-        @layer = @tilemap.createLayer(0)
-        @layer.resizeWorld()
-        @game.groups.background.add(@layer)
-
-        level.run?(@)
-
-        @layer.blendMode = PIXI.blendModes.MULTIPLY
-
-    spawnActor: (x, y, key, options) ->
-        actor = new Actor(@game, x, y, key, options.hp, options.animations)
-        actor.sprite.persistent = not not options.persistent
-        if options.pattern?
-            actor.repeat(options.pattern.bind(actor))
-            actor.nextAction()
-        if options.create?
-            create = options.create.bind(actor)
-            create()
-        actor
+        @player2 = @game.add.sprite(SCREEN_WIDTH/2 - 50, 100, 'player1')
+        @player2.animations.add('pose', [31,32,33], 10, true)
+        @player2.animations.add('idle', [6,7,9], 10, true)
+        @player2.animations.add('forward', [11,12,13,14,15], 10, true)
+        @player2.animations.add('punch', [23,24,25,26], 10, true)
+        @player2.animations.add('kick', [23,24,25,26], 10, true)
+        @player2.animations.add('uppercut', [23,24,25,26], 10, true)
+        @player2.animations.add('hit', [20,21,22], 10, true)
+        @player2.animations.add('die', [10,10,11], 10, true)
+        @player2.scale.x = 3
+        @player2.scale.y = 3
+        @player2.attack = 'idle'
+        @player2Health = 50
+        @player2HealthDisplay = @game.add.text(SCREEN_WIDTH/2 + 40, 20, '||||||||||||||||||||||||||||||||||||||||||||||||||')
 
     update: =>
-        for sprite in @game.groups.actors.children
-            @game.physics.arcade.collide(sprite, @layer)
-    
-        if @player.sprite.x < 0
-            if levels["#{@roomCol-1}x#{@roomRow}"]?
-                @player.sprite.x = SCREEN_WIDTH - @player.sprite.width - 2
-                @roomCol--
-                @loadMap()
-        else if @player.sprite.x > SCREEN_WIDTH - @player.sprite.width
-            if levels["#{@roomCol+1}x#{@roomRow}"]?
-                @player.sprite.x = 2
-                @roomCol++
-                @loadMap()
-        else if @player.sprite.y < 0
-            if levels["#{@roomCol}x#{@roomRow-1}"]?
-                @player.sprite.y = SCREEN_HEIGHT - @player.sprite.height - 2
-                @roomRow--
-                @loadMap()
-        else if @player.sprite.y > SCREEN_HEIGHT - @player.sprite.height
-            if levels["#{@roomCol}x#{@roomRow+1}"]?
-                @player.sprite.y = 2
-                @roomRow++
-                @loadMap()
+        if @keys.p1_punch.isDown or @keys.p1_kick.isDown or @keys.p1_uppercut.isDown
+            if @keys.p1_punch.isDown
+                @player1.attack = 'punch'
+            if @keys.p1_kick.isDown
+                @player1.attack = 'kick'
+            if @keys.p1_uppercut.isDown
+                @player1.attack = 'uppercut'
+        else
+            @player1.attack = 'idle'
+        if @player1.attack != @player1.animations.currentAnim.name
+            @player1.animations.play(@player1.attack)
 
-        @player.sprite.body.velocity.x = 0
-        if @player.sprite.body.velocity.y > 400 then @player.sprite.body.velocity.y = 600
+        if @keys.p2_punch.isDown or @keys.p2_kick.isDown or @keys.p2_uppercut.isDown
+            if @keys.p2_punch.isDown
+                @player2.attack = 'punch'
+            if @keys.p2_kick.isDown
+                @player2.attack = 'kick'
+            if @keys.p2_uppercut.isDown
+                @player2.attack = 'uppercut'
+        else
+            @player2.attack = 'idle'
+        if @player2.attack != @player2.animations.currentAnim.name
+            @player2.animations.play(@player2.attack)
 
-        if @keys.a.isDown
-            @player.sprite.body.velocity.x = -400
-        if @keys.e.isDown or @keys.d.isDown
-            @player.sprite.body.velocity.x = 400
-        if @keys.comma.isDown or @keys.w.isDown
-            @player.sprite.body.velocity.y = -600
+        if @player1.attack != @player2.attack
+            if @player1.attack == 'punch' and @player2.attack == 'uppercut'
+                @player2Health -= 2
+            if @player1.attack == 'uppercut' and @player2.attack == 'kick'
+                @player2Health -= 2
+            if @player1.attack == 'kick' and @player2.attack == 'punch'
+                @player2Health -= 2
+            if @player2.attack == 'idle'
+                @player2Health -= 1
 
-        if @keys.space.justDown
-            @player.attack()
+        if @player2.attack != @player1.attack
+            if @player2.attack == 'punch' and @player1.attack == 'uppercut'
+                @player1Health -= 2
+            if @player2.attack == 'uppercut' and @player1.attack == 'kick'
+                @player1Health -= 2
+            if @player2.attack == 'kick' and @player1.attack == 'punch'
+                @player1Health -= 2
+            if @player1.attack == 'idle'
+                @player1Health -= 1
+
+        @player1HealthDisplay.text = ('|').repeat(@player1Health)
+        @player2HealthDisplay.text = ('|').repeat(@player2Health)
 
 window.game = new Game('game')
+
+
+#@fontStyle =
+#    font: "26px Monospace"
+#    fill: "#D7D7D7"
+#    boundsAlignH: 'center'
+#    fontWeight: 'bold'
+#    boundsAlignV: 'middle'
+#
+
+#if @layer then @layer.destroy()
+#@tilemap = @game.add.tilemap(key, TILE_SIZE, TILE_SIZE)
+#@tilemap.addTilesetImage('tiles')
+#@tilemap.setCollisionByExclusion([0])
+#@layer = @tilemap.createLayer(0)
+#@layer.resizeWorld()
+#@game.groups.background.add(@layer)
+
+#level.run?(@)
+
+#@layer.blendMode = PIXI.blendModes.MULTIPLY
