@@ -24,6 +24,10 @@ EVENTS = {
     'DIE'
 }
 
+
+
+
+
 class Actor
     constructor: (@game, startX, startY, key, hp, animations) ->
         @eventQueue = []
@@ -42,11 +46,12 @@ class Actor
 
         @sprite.animations.add('pose', animations.pose, 10, false).onComplete.add(@nextAction)
         @sprite.animations.add('idle', animations.idle, 5, true)
-        @sprite.animations.add('forward', animations.forward, 20, true)
-        @sprite.animations.add('attack', animations.attack, 20, false).onComplete.add(@nextAction)
+        @sprite.animations.add('forward', animations.forward, 10, true)
+        @sprite.animations.add('attack', animations.attack, 10, false).onComplete.add(@nextAction)
         @sprite.animations.add('hit', animations.hit, 10, false).onComplete.add(@nextAction)
         @sprite.animations.add('die', animations.die, 10, false).onComplete.add(@nextAction)
 
+        @movementTween = null
         @health = 10
         @hearts = []
         for i in [0...10]
@@ -58,28 +63,29 @@ class Actor
         @targetX = null
 
         @sprite.update = =>
-            switch @currentEvent[0]
-                when EVENTS.IDLE
-                    if @game.time.now >= @endTime
-                        @endTime = null
-                        @nextAction()
-                when EVENTS.MOVE_LEFT
-                    if @sprite.body.x <= @targetX
-                        @sprite.body.x = @targetX
-                        @targetX = null
-                        @sprite.body.velocity.x = 0
-                        @nextAction()
-                when EVENTS.MOVE_RIGHT
-                    if @sprite.body.x >= @targetX
-                        @sprite.body.x = @targetX
-                        @targetX = null
-                        @sprite.body.velocity.x = 0
-                        @nextAction()
+            if @currentEvent?
+                switch @currentEvent[0]
+                    when EVENTS.IDLE
+                        if @game.time.now >= @endTime
+                            @endTime = null
+                            @nextAction()
+                    when EVENTS.MOVE_LEFT
+                        if @sprite.body.x <= @targetX
+                            @sprite.body.x = @targetX
+                            @targetX = null
+                            @sprite.body.velocity.x = 0
+                            @nextAction()
+                    when EVENTS.MOVE_RIGHT
+                        if @sprite.body.x >= @targetX
+                            @sprite.body.x = @targetX
+                            @targetX = null
+                            @sprite.body.velocity.x = 0
+                            @nextAction()
 
     nextAction: =>
         if @eventQueue.length > 0
             @currentEvent = @eventQueue.shift()
-            switch @currentEvent[0]
+            switch @currentEvent.type
                 when EVENTS.POSE
                     @sprite.animations.play('pose')
                 when EVENTS.IDLE
@@ -97,12 +103,12 @@ class Actor
                 when EVENTS.MOVE_LEFT
                     @targetX = @sprite.body.x - @currentEvent[1]
                     @sprite.body.velocity.x = -400
-                    @sprite.scale.x = 1
+                    @sprite.scale.x = Math.abs(@sprite.scale.x)
                     @sprite.animations.play('forward')
                 when EVENTS.MOVE_RIGHT
                     @targetX = @sprite.body.x + @currentEvent[1]
                     @sprite.body.velocity.x = 400
-                    @sprite.scale.x = -1
+                    @sprite.scale.x = -Math.abs(@sprite.scale.x)
                     @sprite.animations.play('forward')
         else
             if @repeatFn?
@@ -114,16 +120,16 @@ class Actor
     repeat: (@repeatFn) ->
 
     pose: ->
-        @eventQueue.push([EVENTS.POSE])
+        @eventQueue.push(type: EVENTS.POSE, priority: 2)
 
     idle: (seconds) ->
-        @eventQueue.push([EVENTS.IDLE, seconds])
+        @eventQueue.push(type: EVENTS.IDLE, priority: 1)
 
     attack: ->
-        @eventQueue.push([EVENTS.ATTACK])
+        @eventQueue.push(type: EVENTS.ATTACK, priority: 3)
 
     hit: (damage) ->
-        @eventQueue.unshift([EVENTS.HIT, damage])
+        @eventQueue.push({type: EVENTS.HIT, damage, })
 
     die: ->
         @eventQueue.push([EVENTS.DIE])
@@ -134,6 +140,7 @@ class Actor
     moveRight: (dist) ->
         @eventQueue.push([EVENTS.MOVE_RIGHT, dist])
 
+    moveLeftImmediate: ->
 
     """
     chase: ->
@@ -171,7 +178,7 @@ class Game
     preload: =>
         for key, level of levels
             @game.load.image(level.background, "backgrounds/#{level.background}.png")
-        @game.load.image('player', 'player.png')
+        @game.load.spritesheet('player', 'player.png', 116, 160, 36)
         @game.load.image('heart', 'heart.png')
         @game.load.spritesheet('spoonman', 'bosses/spoonmanbig.png', 273, 192, 12)
         @game.load.spritesheet('toilet', 'toilet.png', 130, 284, 2)
@@ -225,13 +232,25 @@ class Game
         @game.groups = {}
         @game.groups.background = @game.add.group()
         @game.groups.actors = @game.add.group()
+        @game.groups.player = @game.add.group()
         @game.groups.ui = @game.add.group()
 
-        #@player = new Player(@game, 600, 400)
+        @player = @spawnActor 900, 400, 'player',
+            persistent: true
+            hp: 10,
+            animations:
+                pose: [31,32,33]
+                idle: [6,7,9]
+                forward: [11,12,13,14,15]
+                attack: [23,24,25,26]
+                hit: [20,21,22]
+                die: [10,10,11]
+            create: ->
+                @sprite.scale.x = 1.3
+                @sprite.scale.y = 1.3
+                @sprite.body.setSize(34, 128, 37, 15)
 
         @loadMap()
-
-        @currentBoss = null
 
         #@player.body.setSize(32, 64, 0, 0)
 
@@ -245,6 +264,10 @@ class Game
     loadMap: ->
         key = "#{@roomCol}x#{@roomRow}"
         level = levels[key]
+
+        for sprite in @game.groups.actors.children
+            if not sprite.persistent
+                sprite.destroy()
 
         if @background then @background.destroy()
         @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, level.background)
@@ -261,20 +284,22 @@ class Game
         level.run?(@)
 
         @layer.blendMode = PIXI.blendModes.MULTIPLY
-    
+
     spawnActor: (x, y, key, options) ->
         actor = new Actor(@game, x, y, key, options.hp, options.animations)
-        actor.repeat(options.pattern.bind(actor))
-        actor.nextAction()
+        actor.sprite.persistent = not not options.persistent
+        if options.pattern?
+            actor.repeat(options.pattern.bind(actor))
+            actor.nextAction()
+        if options.create?
+            create = options.create.bind(actor)
+            create()
+        actor
 
     update: =>
         for sprite in @game.groups.actors.children
             @game.physics.arcade.collide(sprite, @layer)
-        return
-        @game.physics.arcade.collide(@player.sprite, @layer)
-        if @currentBoss?
-            @game.physics.arcade.collide(@currentBoss.sprite, @layer)
-
+    
         if @player.sprite.x < 0
             if levels["#{@roomCol-1}x#{@roomRow}"]?
                 @player.sprite.x = SCREEN_WIDTH - @player.sprite.width - 2
@@ -307,22 +332,6 @@ class Game
             @player.sprite.body.velocity.y = -600
 
         if @keys.space.justDown
-            @player.hurt()
-
-        if @currentBoss?
-            if @keys._1.justDown
-                @currentBoss.randomBounce()
-            if @keys._2.justDown
-                @currentBoss.bounceLeft()
-            if @keys._3.justDown
-                @currentBoss.bounceRight()
-            if @keys._4.justDown
-                @currentBoss.chase()
-
-        #total = Math.abs(@currentBoss.sprite.body.velocity.x) + Math.abs(@currentBoss.sprite.body.velocity.y)
-        #console.log(total)
-        #if total < 100
-        #    @currentBoss.randomBounce()
-
+            @player.attack()
 
 window.game = new Game('game')

@@ -1,7 +1,7 @@
 module.exports =
     '2x-1':
         run: ->
-        background: 'forest'
+        background: 'clouds'
         tiles: """
 +----------------------------------------+
 |11111111111111            11111111111111|
@@ -31,7 +31,7 @@ module.exports =
 
     '2x-2':
         run: ->
-        background: 'forest'
+        background: 'clouds'
         tiles: """
 +----------------------------------------+
 |1111111111111111111111111111111111111111|
@@ -81,13 +81,16 @@ module.exports =
                     @moveRight(400)
                     @pose()
 
+                onDeath: ->
+                    @game.
+
             #@spawnEnemy 'manhole', 300, 200,
             #    hp: 3
             #    forward: [1,2]
             #    idle: [1,2]
             #    hit: [1,2]
             
-        background: 'forest'
+        background: 'clouds'
         tiles: """
 +----------------------------------------+
 |1111111111111111111111111111111111111111|
