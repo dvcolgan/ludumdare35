@@ -14,18 +14,38 @@ SCREEN_HEIGHT = 704
 TILE_SIZE = 32
 
 
+EVENTS = {
+    'POSE'
+    'IDLE'
+    'MOVE_LEFT'
+    'MOVE_RIGHT'
+    'ATTACK'
+    'HIT'
+    'DIE'
+}
+
 class Actor
-    constructor: (@game, startX, startY) ->
+    constructor: (@game, startX, startY, key, hp, animations) ->
+        @eventQueue = []
 
-
-
-class Player extends Actor
-    constructor: (@game, startX, startY) ->
-        @sprite = @game.add.sprite(startX, startY, 'player')
+        @sprite = @game.add.sprite(startX, startY, key)
         @game.physics.arcade.enable(@sprite)
+        @sprite.body.bounce.set(0.7)
+        @sprite.body.drag.set(40)
+        @sprite.anchor.x = 0.5
+
         @sprite.body.fixedRotation = true
         @sprite.body.collideWorldBounds = false
         @game.groups.actors.add(@sprite)
+
+        @hp = hp
+
+        @sprite.animations.add('pose', animations.pose, 10, false).onComplete.add(@nextAction)
+        @sprite.animations.add('idle', animations.idle, 5, true)
+        @sprite.animations.add('forward', animations.forward, 20, true)
+        @sprite.animations.add('attack', animations.attack, 20, false).onComplete.add(@nextAction)
+        @sprite.animations.add('hit', animations.hit, 10, false).onComplete.add(@nextAction)
+        @sprite.animations.add('die', animations.die, 10, false).onComplete.add(@nextAction)
 
         @health = 10
         @hearts = []
@@ -34,82 +54,86 @@ class Player extends Actor
             @hearts.push(heart)
             @game.groups.ui.add(heart)
 
-    hurt: ->
-        @health--
-        for heart, i in @hearts
-            heart.visible = i < @health
-
-
-class Monster extends Actor
-
-
-class Boss extends Actor
-    constructor: (@game, startX, startY, key, hp, animations, @actionOver) ->
-        @sprite = @game.add.sprite(startX, startY, key)
-        @game.physics.arcade.enable(@sprite)
-        @sprite.body.bounce.set(0.7)
-        @sprite.body.drag.set(40)
-
-        @sprite.animations.add('pose', animations.pose, 10, false).onComplete.add(@actionOver)
-        @sprite.animations.add('idle', animations.idle, 10, true)
-        @sprite.animations.add('forward', animations.forward, 10, true)
-        @sprite.animations.add('attack', animations.attack, 10, false).onComplete.add(@actionOver)
-        @sprite.animations.add('hit', animations.hit, 10, false).onComplete.add(@actionOver)
-        @sprite.animations.add('die', animations.die, 10, false).onComplete.add(@actionOver)
-
-        @game.physics.arcade.enable(@sprite)
-        @hp = hp
         @endTime = null
-        @state = null
         @targetX = null
 
         @sprite.update = =>
-            if @state == 'idling'
-                if @game.time.now >= @endTime
-                    @endTime = null
-                    @state = null
-                    @actionOver()
-            else if @state == 'movingLeft'
-                if @sprite.body.x <= @targetX
-                    @sprite.body.x = @targetX
-                    @targetX = null
-                    @state = null
-                    @sprite.body.velocity.x = 0
-                    @actionOver()
-            else if @state == 'movingRight'
-                if @sprite.body.x >= @targetX
-                    @sprite.body.x = @targetX
-                    @targetX = null
-                    @state = null
-                    @sprite.body.velocity.x = 0
-                    @actionOver()
+            switch @currentEvent[0]
+                when EVENTS.IDLE
+                    if @game.time.now >= @endTime
+                        @endTime = null
+                        @nextAction()
+                when EVENTS.MOVE_LEFT
+                    if @sprite.body.x <= @targetX
+                        @sprite.body.x = @targetX
+                        @targetX = null
+                        @sprite.body.velocity.x = 0
+                        @nextAction()
+                when EVENTS.MOVE_RIGHT
+                    if @sprite.body.x >= @targetX
+                        @sprite.body.x = @targetX
+                        @targetX = null
+                        @sprite.body.velocity.x = 0
+                        @nextAction()
 
-    destroy: ->
-        @sprite.destroy()
+    nextAction: =>
+        if @eventQueue.length > 0
+            @currentEvent = @eventQueue.shift()
+            switch @currentEvent[0]
+                when EVENTS.POSE
+                    @sprite.animations.play('pose')
+                when EVENTS.IDLE
+                    @sprite.animations.play('idle')
+                    @endTime = @game.time.now + @currentEvent[1]
+                when EVENTS.ATTACK
+                    @sprite.animations.play('attack')
+                when EVENTS.HIT
+                    @health -= @currentEvent[1]
+                    for heart, i in @hearts
+                        heart.visible = i < @health
+                    @sprite.animations.play('hit')
+                when EVENTS.DIE
+                    @sprite.animations.play('die')
+                when EVENTS.MOVE_LEFT
+                    @targetX = @sprite.body.x - @currentEvent[1]
+                    @sprite.body.velocity.x = -400
+                    @sprite.scale.x = 1
+                    @sprite.animations.play('forward')
+                when EVENTS.MOVE_RIGHT
+                    @targetX = @sprite.body.x + @currentEvent[1]
+                    @sprite.body.velocity.x = 400
+                    @sprite.scale.x = -1
+                    @sprite.animations.play('forward')
+        else
+            if @repeatFn?
+                @repeatFn()
+                @nextAction()
+            else
+                @currentEvent = null
 
-    idle: (seconds) ->
-        @state = 'idling'
-        @endTime = @game.time.now + seconds * 1000
-        @sprite.animations.play('idle')
+    repeat: (@repeatFn) ->
 
     pose: ->
-        @sprite.animations.play('pose')
+        @eventQueue.push([EVENTS.POSE])
+
+    idle: (seconds) ->
+        @eventQueue.push([EVENTS.IDLE, seconds])
+
     attack: ->
-        @sprite.animations.play('attack')
-    hit: ->
-        @sprite.animations.play('hit')
+        @eventQueue.push([EVENTS.ATTACK])
+
+    hit: (damage) ->
+        @eventQueue.unshift([EVENTS.HIT, damage])
+
     die: ->
-        @sprite.animations.play('die')
+        @eventQueue.push([EVENTS.DIE])
 
     moveLeft: (dist) ->
-        @targetX = @sprite.body.x - dist
-        @sprite.body.velocity.x = -400
-        @state = 'movingLeft'
+        @eventQueue.push([EVENTS.MOVE_LEFT, dist])
 
     moveRight: (dist) ->
-        @targetX = @sprite.body.x + dist
-        @sprite.body.velocity.x = 400
-        @state = 'movingRight'
+        @eventQueue.push([EVENTS.MOVE_RIGHT, dist])
+
 
     """
     chase: ->
@@ -149,7 +173,7 @@ class Game
             @game.load.image(level.background, "backgrounds/#{level.background}.png")
         @game.load.image('player', 'player.png')
         @game.load.image('heart', 'heart.png')
-        @game.load.spritesheet('spoonman', 'bosses/spoonman.png', 91, 64, 12)
+        @game.load.spritesheet('spoonman', 'bosses/spoonmanbig.png', 273, 192, 12)
         @game.load.spritesheet('toilet', 'toilet.png', 130, 284, 2)
         @game.load.image('tiles', 'tile.png')
 
@@ -203,7 +227,7 @@ class Game
         @game.groups.actors = @game.add.group()
         @game.groups.ui = @game.add.group()
 
-        @player = new Player(@game, 600, 400)
+        #@player = new Player(@game, 600, 400)
 
         @loadMap()
 
@@ -238,12 +262,15 @@ class Game
 
         @layer.blendMode = PIXI.blendModes.MULTIPLY
     
-    spawnBoss: (key, x, y, options) ->
-        @currentBoss = new Boss(@game, x, y, key, options.hp, options.animations, callback)
-        @currentBossPattern = options.pattern
-        @currentBossI = 0
+    spawnActor: (x, y, key, options) ->
+        actor = new Actor(@game, x, y, key, options.hp, options.animations)
+        actor.repeat(options.pattern.bind(actor))
+        actor.nextAction()
 
     update: =>
+        for sprite in @game.groups.actors.children
+            @game.physics.arcade.collide(sprite, @layer)
+        return
         @game.physics.arcade.collide(@player.sprite, @layer)
         if @currentBoss?
             @game.physics.arcade.collide(@currentBoss.sprite, @layer)

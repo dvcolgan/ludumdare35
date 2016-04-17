@@ -61,25 +61,25 @@ module.exports =
 
     '3x-2':
         run: ->
-            @spawnBoss 'spoonman', 800, 400,
+            @spawnActor 800, 400, 'spoonman',
                 hp: 4
                 animations:
-                    pose: [1,1,2,2,4,4,4,4,4,4,3,3,3,3,3,3,3]
-                    idle: [1,2,3]
+                    pose: [1,1,2,2,4,4,4,4,4,4]
+                    idle: [0,1,2]
                     forward: [8,9]
                     attack: [2,4,5,5,6,6,6,7]
                     hit: [10,10,10,11,11,11]
                     die: [10,10,11]
-                pattern: [
-                    ['attack']
-                    ['idle', 4]
-                    ['moveLeft', 40]
-                    ['pose']
-                    ['attack']
-                    ['idle', 4]
-                    ['moveRight', 40]
-                    ['pose']
-                ]
+
+                pattern: ->
+                    @attack()
+                    @idle(2000)
+                    @moveLeft(400)
+                    @pose()
+                    @attack()
+                    @idle(2000)
+                    @moveRight(400)
+                    @pose()
 
             #@spawnEnemy 'manhole', 300, 200,
             #    hp: 3
