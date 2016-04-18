@@ -108,25 +108,71 @@ class Actor
                 @currentEvent = null
 
 
-class Game
-    constructor: (@elementId) ->
-        @game = new Phaser.Game(
-            SCREEN_WIDTH, SCREEN_HEIGHT
-            Phaser.AUTO, @elementId
-            {preload: @preload, create: @create, update: @update}
-        )
+class BootState
+    create: ->
+        @game.state.start('preload')
 
-    doCommand: (command) ->
 
-    preload: =>
+class PreloadState
+    preload: ->
         @game.load.spritesheet('player1', 'player.png', 116, 160, 36)
         @game.load.image('heart', 'heart.png')
         @game.load.image('kitchen', 'backgrounds/kitchen.png')
         @game.load.image('sink', 'backgrounds/sink.png')
         @game.load.image('forest', 'backgrounds/forest.png')
+        @game.load.image('title', 'backgrounds/title.png')
+        @game.load.image('healthbar-background', 'healthbar-background.png')
+        @game.load.image('healthbar-green', 'healthbar-green.png')
         @game.load.spritesheet('spoonman', 'bosses/spoonmanbig.png', 273, 192, 12)
 
-    create: =>
+    create: ->
+        @game.state.start('title')
+
+
+class TitleState
+    create: ->
+        @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'title')
+        @startText = @game.add.text(30, 500, 'DEPRESS\nSPACEBAR', {
+            fill: 'white'
+            font: '60px bold monospace'
+        })
+        @flipperTime = @game.time.now + 700
+        @spacebar = @game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR)
+
+    update: ->
+        if @game.time.now >= @flipperTime
+            @startText.visible = not @startText.visible
+            if @startText.visible
+                @flipperTime = @game.time.now + 700
+            else
+                @flipperTime = @game.time.now + 200
+
+        if @spacebar.justDown
+            @game.state.start('game')
+
+
+class GameState
+    makePlayer: (x, y, spriteKey, animations) ->
+        sprite = @game.add.sprite(x, y, spriteKey)
+        sprite.animations.add('pose', animations.pose, 10, true)
+        sprite.animations.add('idle', animations.idle, 5, true)
+        sprite.animations.add('punch', animations.punch, 10, true)
+        sprite.animations.add('knee', animations.knee, 10, true)
+        sprite.animations.add('kick', animations.kick, 10, true)
+        sprite.animations.add('hit', animations.hit, 10, false)
+        sprite.animations.add('die', animations.die, 10, false)
+        sprite.animations.add('transform', animations.transform, 10, false)
+        sprite.anchor.setTo(0.5, 0.5)
+        attack = 'idle'
+        sprite.animations.play('idle')
+
+        health = 100
+        healthbarBackground = @game.add.sprite(20, 20, 'healthbar-background')
+        healthbarGreen = @game.add.sprite(24, 24, 'healthbar-green')
+
+        {sprite, attack, health, healthbarBackground, healthbarGreen}
+
+    create: ->
         @keys = @game.input.keyboard.addKeys
             confirm: Phaser.KeyCode.SPACEBAR
 
@@ -148,86 +194,135 @@ class Game
 
         @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'forest')
 
-        @player1 = @game.add.sprite(SCREEN_WIDTH/2 + 100, 100, 'player1')
-        @player1.animations.add('pose', [31,32,33], 10, true)
-        @player1.animations.add('idle', [6,7,9], 10, true)
-        @player1.animations.add('forward', [11,12,13,14,15], 10, true)
-        @player1.animations.add('punch', [31], 10, true)
-        @player1.animations.add('knee', [13], 10, true)
-        @player1.animations.add('kick', [20], 10, true)
-        @player1.animations.add('hit', [20,21,22], 10, true)
-        @player1.animations.add('die', [10,10,11], 10, true)
-        @player1.scale.x = -3
-        @player1.scale.y = 3
-        @player1.attack = 'idle'
-        @player1.animations.play('idle')
-        @player1Health = 2500
-        @player1HealthDisplay = @game.add.text(20, 20, '||||||||||||||||||||||||||||||||||||||||||||||||||')
+        @player1 = @makePlayer SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT/2, 'player1',
+            pose: [31,32,33]
+            idle: [6,7,9]
+            punch: [31]
+            knee: [13]
+            kick: [20]
+            hit: [20,21,22]
+            die: [10,10,11]
+            transform: [16,17,18,19]
+        @player1.sprite.scale.x = -3
+        @player1.sprite.scale.y = 3
 
-        @player2 = @game.add.sprite(SCREEN_WIDTH/2 - 50, 100, 'player1')
-        @player2.animations.add('pose', [31,32,33], 10, true)
-        @player2.animations.add('idle', [6,7,9], 10, true)
-        @player2.animations.add('forward', [11,12,13,14,15], 10, true)
-        @player2.animations.add('punch', [31], 10, true)
-        @player2.animations.add('knee', [13], 10, true)
-        @player2.animations.add('kick', [20], 10, true)
-        @player2.animations.add('hit', [20,21,22], 10, true)
-        @player2.animations.add('die', [10,10,11], 10, true)
-        @player2.scale.x = 3
-        @player2.scale.y = 3
-        @player2.attack = 'idle'
-        @player2Health = 2500
-        @player2HealthDisplay = @game.add.text(SCREEN_WIDTH/2 + 40, 20, '||||||||||||||||||||||||||||||||||||||||||||||||||')
+        @player2 = @makePlayer SCREEN_WIDTH/2 + 100, SCREEN_HEIGHT/2, 'player1',
+            pose: [31,32,33]
+            idle: [6,7,9]
+            punch: [31]
+            knee: [13]
+            kick: [20]
+            hit: [20,21,22]
+            die: [10,10,11]
+            transform: [16,17,18,19]
 
-    update: =>
-        if @keys.p1_punch.isDown or @keys.p1_kick.isDown or @keys.p1_knee.isDown
-            if @keys.p1_punch.isDown
-                @player1.attack = 'punch'
-            if @keys.p1_kick.isDown
-                @player1.attack = 'kick'
-            if @keys.p1_knee.isDown
-                @player1.attack = 'knee'
-        else
-            @player1.attack = 'idle'
-        if @player1.attack != @player1.animations.currentAnim.name
-            @player1.animations.play(@player1.attack)
+        @doCountdown()
 
-        if @keys.p2_punch.isDown or @keys.p2_kick.isDown or @keys.p2_knee.isDown
-            if @keys.p2_punch.isDown
-                @player2.attack = 'punch'
-            if @keys.p2_kick.isDown
-                @player2.attack = 'kick'
-            if @keys.p2_knee.isDown
-                @player2.attack = 'knee'
-        else
-            @player2.attack = 'idle'
-        if @player2.attack != @player2.animations.currentAnim.name
-            @player2.animations.play(@player2.attack)
+    doCountdown: ->
+        @combatState = 'countdown'
+        @startTime = @game.time.now + 5000
+        @countdownDisplay = @game.add.text 0, 0, '',
+            fill: 'white'
+            stroke: 'black'
+            strokeThickness: 12
+            boundsAlignH: 'center'
+            boundsAlignV: 'middle'
+            font: '300px bold monospace'
+        @countdownDisplay.setTextBounds(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
-        if @player1.attack != @player2.attack
-            if @player1.attack == 'punch' and @player2.attack == 'knee'
-                @player2Health -= 2
-            if @player1.attack == 'knee' and @player2.attack == 'kick'
-                @player2Health -= 2
-            if @player1.attack == 'kick' and @player2.attack == 'punch'
-                @player2Health -= 2
-            if @player2.attack == 'idle'
-                @player2Health -= 1
+    doStartRound: ->
+        @countdownDisplay.destroy()
+        @combatState = 'during'
 
-        if @player2.attack != @player1.attack
-            if @player2.attack == 'punch' and @player1.attack == 'knee'
-                @player1Health -= 2
-            if @player2.attack == 'knee' and @player1.attack == 'kick'
-                @player1Health -= 2
-            if @player2.attack == 'kick' and @player1.attack == 'punch'
-                @player1Health -= 2
-            if @player1.attack == 'idle'
-                @player1Health -= 1
+    doEndRound: ->
+        if @player1Health <= 0
+            @player1.animations.play('die')
+            @player2.animations.play('transform')
+        else if @player2Health <= 0
+            @player2.animations.play('die')
+            @player1.animations.play('transform')
+        @combatState = 'over'
 
-        @player1HealthDisplay.text = ('|').repeat(@player1Health/100)
-        @player2HealthDisplay.text = ('|').repeat(@player2Health/100)
+    update: ->
+        if @combatState == 'countdown'
+            remaining = Math.floor((@startTime - @game.time.now) / 1000)
+            display = remaining - 1
+            if display == 0 then display = 'FIGHT!'
+            @countdownDisplay.text = display.toString()
 
-window.game = new Game('game')
+            if remaining <= 0
+                @doStartRound()
+                return
+
+        else if @combatState == 'during'
+
+            if @player1Health <= 0 or @player2Health <= 0
+                @doEndRound()
+                return
+
+            if @keys.p1_punch.isDown or @keys.p1_kick.isDown or @keys.p1_knee.isDown
+                if @keys.p1_punch.isDown
+                    @player1.attack = 'punch'
+                if @keys.p1_kick.isDown
+                    @player1.attack = 'kick'
+                if @keys.p1_knee.isDown
+                    @player1.attack = 'knee'
+            else
+                @player1.attack = 'idle'
+            if @player1.attack != @player1.animations.currentAnim.name
+                @player1.animations.play(@player1.attack)
+
+            if @keys.p2_punch.isDown or @keys.p2_kick.isDown or @keys.p2_knee.isDown
+                if @keys.p2_punch.isDown
+                    @player2.attack = 'punch'
+                if @keys.p2_kick.isDown
+                    @player2.attack = 'kick'
+                if @keys.p2_knee.isDown
+                    @player2.attack = 'knee'
+            else
+                @player2.attack = 'idle'
+            if @player2.attack != @player2.animations.currentAnim.name
+                @player2.animations.play(@player2.attack)
+
+            if @player1.attack != @player2.attack
+                if @player1.attack == 'punch' and @player2.attack == 'knee'
+                    @player2Health -= 2
+                if @player1.attack == 'knee' and @player2.attack == 'kick'
+                    @player2Health -= 2
+                if @player1.attack == 'kick' and @player2.attack == 'punch'
+                    @player2Health -= 2
+                if @player2.attack == 'idle'
+                    @player2Health -= 1
+
+            if @player2.attack != @player1.attack
+                if @player2.attack == 'punch' and @player1.attack == 'knee'
+                    @player1Health -= 2
+                if @player2.attack == 'knee' and @player1.attack == 'kick'
+                    @player1Health -= 2
+                if @player2.attack == 'kick' and @player1.attack == 'punch'
+                    @player1Health -= 2
+                if @player1.attack == 'idle'
+                    @player1Health -= 1
+
+            @player1HealthbarGreen.scale.x = @player1Health / 100
+            @player2HealthbarGreen.scale.x = @player2Health / 100
+
+        else if @combatState == 'over'
+            null
+
+
+class WinLoseState
+    create: ->
+
+
+game = new Phaser.Game(SCREEN_WIDTH, SCREEN_HEIGHT, Phaser.AUTO, 'game')
+game.state.add('boot', BootState)
+game.state.add('preload', PreloadState)
+game.state.add('title', TitleState)
+game.state.add('game', GameState)
+game.state.add('winlose', WinLoseState)
+
+game.state.start('boot')
 
 
 #@fontStyle =
