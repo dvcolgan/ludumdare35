@@ -2,112 +2,6 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 
 
-"""
-3 moves
-punch
-kick
-knee
-
-kick beats punch
-punch beats knee
-knee beats kick
-
-4 hits to ded someone
-
-hold the button to hold it out
-"""
-
-
-class Actor
-    constructor: (@game, startX, startY, key, hp, animations) ->
-        @eventQueue = []
-
-        @sprite = @game.add.sprite(startX, startY, key)
-        @game.physics.arcade.enable(@sprite)
-        @sprite.body.bounce.set(0.7)
-        @sprite.body.drag.set(40)
-        @sprite.anchor.x = 0.5
-
-        @sprite.body.fixedRotation = true
-        @sprite.body.collideWorldBounds = false
-        @game.groups.actors.add(@sprite)
-
-        @hp = hp
-
-        @sprite.animations.add('pose', animations.pose, 10, false).onComplete.add(@nextAction)
-        @sprite.animations.add('idle', animations.idle, 5, true)
-        @sprite.animations.add('forward', animations.forward, 10, true)
-        @sprite.animations.add('attack', animations.attack, 10, false).onComplete.add(@nextAction)
-        @sprite.animations.add('hit', animations.hit, 10, false).onComplete.add(@nextAction)
-        @sprite.animations.add('die', animations.die, 10, false).onComplete.add(@nextAction)
-
-        @movementTween = null
-        @health = 10
-        @hearts = []
-        for i in [0...10]
-            heart = @game.add.sprite(48 + i * 64, 48, 'heart')
-            @hearts.push(heart)
-            @game.groups.ui.add(heart)
-
-        @endTime = null
-        @targetX = null
-
-        @sprite.update = =>
-            if @currentEvent?
-                switch @currentEvent[0]
-                    when EVENTS.IDLE
-                        if @game.time.now >= @endTime
-                            @endTime = null
-                            @nextAction()
-                    when EVENTS.MOVE_LEFT
-                        if @sprite.body.x <= @targetX
-                            @sprite.body.x = @targetX
-                            @targetX = null
-                            @sprite.body.velocity.x = 0
-                            @nextAction()
-                    when EVENTS.MOVE_RIGHT
-                        if @sprite.body.x >= @targetX
-                            @sprite.body.x = @targetX
-                            @targetX = null
-                            @sprite.body.velocity.x = 0
-                            @nextAction()
-
-    nextAction: =>
-        if @eventQueue.length > 0
-            @currentEvent = @eventQueue.shift()
-            switch @currentEvent.type
-                when EVENTS.POSE
-                    @sprite.animations.play('pose')
-                when EVENTS.IDLE
-                    @sprite.animations.play('idle')
-                    @endTime = @game.time.now + @currentEvent[1]
-                when EVENTS.ATTACK
-                    @sprite.animations.play('attack')
-                when EVENTS.HIT
-                    @health -= @currentEvent[1]
-                    for heart, i in @hearts
-                        heart.visible = i < @health
-                    @sprite.animations.play('hit')
-                when EVENTS.DIE
-                    @sprite.animations.play('die')
-                when EVENTS.MOVE_LEFT
-                    @targetX = @sprite.body.x - @currentEvent[1]
-                    @sprite.body.velocity.x = -400
-                    @sprite.scale.x = Math.abs(@sprite.scale.x)
-                    @sprite.animations.play('forward')
-                when EVENTS.MOVE_RIGHT
-                    @targetX = @sprite.body.x + @currentEvent[1]
-                    @sprite.body.velocity.x = 400
-                    @sprite.scale.x = -Math.abs(@sprite.scale.x)
-                    @sprite.animations.play('forward')
-        else
-            if @repeatFn?
-                @repeatFn()
-                @nextAction()
-            else
-                @currentEvent = null
-
-
 class BootState
     create: ->
         @game.state.start('preload')
@@ -116,14 +10,13 @@ class BootState
 class PreloadState
     preload: ->
         @game.load.spritesheet('player1', 'player.png', 116, 160, 36)
-        @game.load.image('heart', 'heart.png')
-        @game.load.image('kitchen', 'backgrounds/kitchen.png')
-        @game.load.image('sink', 'backgrounds/sink.png')
-        @game.load.image('forest', 'backgrounds/forest.png')
-        @game.load.image('title', 'backgrounds/title.png')
+        @game.load.image('title', 'title.png')
         @game.load.image('healthbar-background', 'healthbar-background.png')
         @game.load.image('healthbar-green', 'healthbar-green.png')
-        @game.load.spritesheet('spoonman', 'bosses/spoonmanbig.png', 273, 192, 12)
+
+        for levelName in ['arctic', 'city', 'forest', 'kitchen', 'stage', 'table']
+            @game.load.image(levelName, "backgrounds/#{levelName}.png")
+            @game.load.image(levelName + '-thumbnail', "backgrounds/#{levelName}-thumbnail.png")
 
     create: ->
         @game.state.start('title')
@@ -148,11 +41,101 @@ class TitleState
                 @flipperTime = @game.time.now + 200
 
         if @spacebar.justDown
+            @game.state.start('levelselect')
+
+window.selectedLevel = 'arctic'
+
+
+class LevelSelectState
+    create: ->
+        @game.stage.backgroundColor = '#FFaaaa'
+        @levels = [
+            ['arctic', 'city', 'forest']
+            ['kitchen', 'stage', 'table']
+        ]
+        @stageSprites = (
+            for row in [0...2]
+                for col in [0...3]
+                    x = SCREEN_WIDTH/2 - 400 + col * 300
+                    y = 225 + row * 250
+                    sprite = @game.add.sprite(x + 100, y + 100, @levels[row][col] + '-thumbnail')
+                    sprite.anchor.setTo(0.5, 0.5)
+                    @game.add.text x+10, y+150, @levels[row][col].toUpperCase(),
+                        fill: 'white'
+                        stroke: 'black'
+                        strokeThickness: 6
+                        font: '30px bold monospace'
+                    sprite
+        )
+        @currentCol = 0
+        @currentRow = 0
+
+        @title = @game.add.text 0, 0, 'SELECT STAGE',
+            fill: 'white'
+            stroke: 'black'
+            strokeThickness: 12
+            boundsAlignH: 'center'
+            boundsAlignV: 'middle'
+            font: '100px bold monospace'
+        @title.setTextBounds(0, 0, SCREEN_WIDTH, 120)
+
+        @directions = @game.add.text 0, 80, 'Choose with arrows, space to select',
+            fill: 'white'
+            stroke: 'black'
+            strokeThickness: 6
+            boundsAlignH: 'center'
+            boundsAlignV: 'middle'
+            font: '48px bold monospace'
+        @directions.setTextBounds(0, 0, SCREEN_WIDTH, 120)
+
+        @keys = @game.input.keyboard.addKeys
+            spacebar: Phaser.KeyCode.SPACEBAR
+            up: Phaser.KeyCode.UP
+            down: Phaser.KeyCode.DOWN
+            left: Phaser.KeyCode.LEFT
+            right: Phaser.KeyCode.RIGHT
+
+        @highlight()
+
+    highlight: ->
+        for rowData, row in @stageSprites
+            for sprite, col in rowData
+                if not (col == @currentCol and row == @currentRow)
+                    sprite.tint = 0x666666
+                    sprite.scale.x = 1
+                    sprite.scale.y = 1
+                else
+                    sprite.tint = 0xffffff
+                    sprite.scale.x = 1.1
+                    sprite.scale.y = 1.1
+                    window.selectedLevel = @levels[row][col]
+
+
+    update: ->
+        if @keys.spacebar.justDown
             @game.state.start('game')
+
+        if @keys.left.justDown
+            @currentCol--
+            if @currentCol < 0 then @currentCol = 0
+            @highlight()
+        if @keys.right.justDown
+            @currentCol++
+            if @currentCol > 2 then @currentCol = 2
+            @highlight()
+
+        if @keys.up.justDown
+            @currentRow--
+            if @currentRow < 0 then @currentRow = 0
+            @highlight()
+        if @keys.down.justDown
+            @currentRow++
+            if @currentRow > 1 then @currentRow = 1
+            @highlight()
 
 
 class GameState
-    makePlayer: (x, y, spriteKey, animations) ->
+    makePlayer: (x, y, healthbarX, healthbarY, spriteKey, animations) ->
         sprite = @game.add.sprite(x, y, spriteKey)
         sprite.animations.add('pose', animations.pose, 10, true)
         sprite.animations.add('idle', animations.idle, 5, true)
@@ -167,8 +150,8 @@ class GameState
         sprite.animations.play('idle')
 
         health = 100
-        healthbarBackground = @game.add.sprite(20, 20, 'healthbar-background')
-        healthbarGreen = @game.add.sprite(24, 24, 'healthbar-green')
+        healthbarBackground = @game.add.sprite(healthbarX, healthbarY, 'healthbar-background')
+        healthbarGreen = @game.add.sprite(healthbarX + 4, healthbarY + 4, 'healthbar-green')
 
         {sprite, attack, health, healthbarBackground, healthbarGreen}
 
@@ -192,9 +175,9 @@ class GameState
         @game.groups.player = @game.add.group()
         @game.groups.ui = @game.add.group()
 
-        @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'forest')
+        @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, selectedLevel)
 
-        @player1 = @makePlayer SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT/2, 'player1',
+        @player1 = @makePlayer SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT/2 + 40, 40, 40, 'player1',
             pose: [31,32,33]
             idle: [6,7,9]
             punch: [31]
@@ -206,7 +189,7 @@ class GameState
         @player1.sprite.scale.x = -3
         @player1.sprite.scale.y = 3
 
-        @player2 = @makePlayer SCREEN_WIDTH/2 + 100, SCREEN_HEIGHT/2, 'player1',
+        @player2 = @makePlayer SCREEN_WIDTH/2 + 100, SCREEN_HEIGHT/2 + 40, SCREEN_WIDTH/2 + 40, 40, 'player1',
             pose: [31,32,33]
             idle: [6,7,9]
             punch: [31]
@@ -215,13 +198,15 @@ class GameState
             hit: [20,21,22]
             die: [10,10,11]
             transform: [16,17,18,19]
+        @player2.sprite.scale.x = 3
+        @player2.sprite.scale.y = 3
 
         @doCountdown()
 
     doCountdown: ->
         @combatState = 'countdown'
         @startTime = @game.time.now + 5000
-        @countdownDisplay = @game.add.text 0, 0, '',
+        @countdownDisplay = @game.add.text 1, 0, '',
             fill: 'white'
             stroke: 'black'
             strokeThickness: 12
@@ -319,28 +304,8 @@ game = new Phaser.Game(SCREEN_WIDTH, SCREEN_HEIGHT, Phaser.AUTO, 'game')
 game.state.add('boot', BootState)
 game.state.add('preload', PreloadState)
 game.state.add('title', TitleState)
+game.state.add('levelselect', LevelSelectState)
 game.state.add('game', GameState)
 game.state.add('winlose', WinLoseState)
 
 game.state.start('boot')
-
-
-#@fontStyle =
-#    font: "26px Monospace"
-#    fill: "#D7D7D7"
-#    boundsAlignH: 'center'
-#    fontWeight: 'bold'
-#    boundsAlignV: 'middle'
-#
-
-#if @layer then @layer.destroy()
-#@tilemap = @game.add.tilemap(key, TILE_SIZE, TILE_SIZE)
-#@tilemap.addTilesetImage('tiles')
-#@tilemap.setCollisionByExclusion([0])
-#@layer = @tilemap.createLayer(0)
-#@layer.resizeWorld()
-#@game.groups.background.add(@layer)
-
-#level.run?(@)
-
-#@layer.blendMode = PIXI.blendModes.MULTIPLY
