@@ -4,18 +4,32 @@ window.selectedLevel = 'arctic'
 
 
 class BootState
+    preload: ->
+        @game.load.spritesheet('healthbar-background', 'healthbar-background.png', 560, 50, 3)
+        @game.load.image('healthbar-green', 'healthbar-green.png')
+
     create: ->
         @game.state.start('preload')
 
 
 class PreloadState
     preload: ->
+        @game.load.onFileComplete.add(@fileComplete)
+
+        barX = 400
+        barY = 300
+        @progressbarBackground = @game.add.sprite(barX, barY, 'healthbar-background')
+        @progressbarBackground.animations.add('glow', [0,0,0,0,0,0,0,0,0,1,2], 10, true)
+        @progressbarBackground.animations.play('glow')
+        @progressbarGreen = @game.add.sprite(barX + 4, barY + 4, 'healthbar-green')
+        @progressbarGreen.scale.x = 0
+
         @game.load.spritesheet('player1', 'player1.png', 116, 160, 36)
         @game.load.spritesheet('player2', 'player2.png', 180, 316, 21)
-        @game.load.image('title', 'title.png')
-        @game.load.image('how-to-play', 'how-to-play.png')
-        @game.load.spritesheet('healthbar-background', 'healthbar-background.png', 560, 50, 3)
-        @game.load.image('healthbar-green', 'healthbar-green.png')
+        @game.load.image('title', 'title.jpg')
+        @game.load.image('how-to-play', 'how-to-play.jpg')
+        #@game.load.spritesheet('healthbar-background', 'healthbar-background.png', 560, 50, 3)
+        #@game.load.image('healthbar-green', 'healthbar-green.png')
 
         @game.load.audio('bgm', ['audio/bgm.mp3', 'audio/bgm.ogg'])
 
@@ -31,12 +45,15 @@ class PreloadState
         @game.load.image('sink', 'backgrounds/sink.png')
 
         for levelName in ['arctic', 'city', 'forest', 'kitchen', 'stage', 'table']
-            @game.load.image(levelName, "backgrounds/#{levelName}.png")
-            @game.load.image(levelName + '-thumbnail', "backgrounds/#{levelName}-thumbnail.png")
+            @game.load.image(levelName, "backgrounds/#{levelName}.jpg")
+            @game.load.image(levelName + '-thumbnail', "backgrounds/#{levelName}-thumbnail.jpg")
 
     create: ->
         @game.add.audio('bgm').play()
         @game.state.start('intro')
+
+    fileComplete: (progress, cacheKey, success, totalLoaded, totalFiles) =>
+        @progressbarGreen.scale.x = progress
 
 
 class IntroState
