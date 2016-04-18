@@ -11,8 +11,12 @@ class PreloadState
     preload: ->
         @game.load.spritesheet('player1', 'player.png', 116, 160, 36)
         @game.load.image('title', 'title.png')
-        @game.load.image('healthbar-background', 'healthbar-background.png')
+        @game.load.spritesheet('healthbar-background', 'healthbar-background.png', 560, 50, 3)
         @game.load.image('healthbar-green', 'healthbar-green.png')
+
+        @game.load.spritesheet('rock', 'rock.png', 294, 250, 3)
+        @game.load.spritesheet('paper', 'paper.png', 300, 169, 3)
+        @game.load.spritesheet('scissors', 'scissors.png', 300, 168, 3)
 
         for levelName in ['arctic', 'city', 'forest', 'kitchen', 'stage', 'table']
             @game.load.image(levelName, "backgrounds/#{levelName}.png")
@@ -151,6 +155,8 @@ class GameState
 
         health = 100
         healthbarBackground = @game.add.sprite(healthbarX, healthbarY, 'healthbar-background')
+        healthbarBackground.animations.add('glow', [0,0,0,0,0,0,0,0,0,1,2], 10, true)
+        healthbarBackground.animations.play('glow')
         healthbarGreen = @game.add.sprite(healthbarX + 4, healthbarY + 4, 'healthbar-green')
 
         {sprite, attack, health, healthbarBackground, healthbarGreen}
@@ -205,7 +211,7 @@ class GameState
 
     doCountdown: ->
         @combatState = 'countdown'
-        @startTime = @game.time.now + 5000
+        @startTime = @game.time.now + 100 #5000
         @countdownDisplay = @game.add.text 1, 0, '',
             fill: 'white'
             stroke: 'black'
@@ -220,12 +226,12 @@ class GameState
         @combatState = 'during'
 
     doEndRound: ->
-        if @player1Health <= 0
-            @player1.animations.play('die')
-            @player2.animations.play('transform')
-        else if @player2Health <= 0
-            @player2.animations.play('die')
-            @player1.animations.play('transform')
+        if @player1.health <= 0
+            @player1.sprite.animations.play('die')
+            @player2.sprite.animations.play('transform')
+        else if @player2.health <= 0
+            @player2.sprite.animations.play('die')
+            @player1.sprite.animations.play('transform')
         @combatState = 'over'
 
     update: ->
@@ -241,7 +247,8 @@ class GameState
 
         else if @combatState == 'during'
 
-            if @player1Health <= 0 or @player2Health <= 0
+            console.log(@player1.health, @player2.health)
+            if @player1.health <= 0 or @player2.health <= 0
                 @doEndRound()
                 return
 
@@ -254,8 +261,8 @@ class GameState
                     @player1.attack = 'knee'
             else
                 @player1.attack = 'idle'
-            if @player1.attack != @player1.animations.currentAnim.name
-                @player1.animations.play(@player1.attack)
+            if @player1.attack != @player1.sprite.animations.currentAnim.name
+                @player1.sprite.animations.play(@player1.attack)
 
             if @keys.p2_punch.isDown or @keys.p2_kick.isDown or @keys.p2_knee.isDown
                 if @keys.p2_punch.isDown
@@ -266,31 +273,31 @@ class GameState
                     @player2.attack = 'knee'
             else
                 @player2.attack = 'idle'
-            if @player2.attack != @player2.animations.currentAnim.name
-                @player2.animations.play(@player2.attack)
+            if @player2.attack != @player2.sprite.animations.currentAnim.name
+                @player2.sprite.animations.play(@player2.attack)
 
             if @player1.attack != @player2.attack
                 if @player1.attack == 'punch' and @player2.attack == 'knee'
-                    @player2Health -= 2
+                    @player2.health -= 2
                 if @player1.attack == 'knee' and @player2.attack == 'kick'
-                    @player2Health -= 2
+                    @player2.health -= 2
                 if @player1.attack == 'kick' and @player2.attack == 'punch'
-                    @player2Health -= 2
+                    @player2.health -= 2
                 if @player2.attack == 'idle'
-                    @player2Health -= 1
+                    @player2.health -= 1
 
             if @player2.attack != @player1.attack
                 if @player2.attack == 'punch' and @player1.attack == 'knee'
-                    @player1Health -= 2
+                    @player1.health -= 2
                 if @player2.attack == 'knee' and @player1.attack == 'kick'
-                    @player1Health -= 2
+                    @player1.health -= 2
                 if @player2.attack == 'kick' and @player1.attack == 'punch'
-                    @player1Health -= 2
+                    @player1.health -= 2
                 if @player1.attack == 'idle'
-                    @player1Health -= 1
+                    @player1.health -= 1
 
-            @player1HealthbarGreen.scale.x = @player1Health / 100
-            @player2HealthbarGreen.scale.x = @player2Health / 100
+            @player1.healthbarGreen.scale.x = @player1.health / 100
+            @player2.healthbarGreen.scale.x = @player2.health / 100
 
         else if @combatState == 'over'
             null
