@@ -40,6 +40,10 @@ class PreloadState
         @game.load.audio('fight', ['audio/fight.mp3', 'audio/fight.ogg'])
         @game.load.audio('mortal-ro-sham-bo', ['audio/mortal-ro-sham-bo.mp3', 'audio/mortal-ro-sham-bo.ogg'])
 
+        @game.load.audio('rock-wins', ['audio/rock-wins.mp3', 'audio/rock-wins.ogg'])
+        @game.load.audio('paper-wins', ['audio/paper-wins.mp3', 'audio/paper-wins.ogg'])
+        @game.load.audio('scissors-wins', ['audio/scissors-wins.mp3', 'audio/scissors-wins.ogg'])
+
         @game.load.image('intro1', 'intro1.png')
         @game.load.image('intro2', 'intro1.png')
         @game.load.image('intro3', 'intro2.png')
@@ -280,12 +284,12 @@ class GameState
         @keys = @game.input.keyboard.addKeys
             spacebar: Phaser.KeyCode.SPACEBAR
 
-            p1_paper: Phaser.KeyCode.ONE
-            p1_rock: Phaser.KeyCode.TWO
+            p1_rock: Phaser.KeyCode.ONE
+            p1_paper: Phaser.KeyCode.TWO
             p1_scissors: Phaser.KeyCode.THREE
 
-            p2_paper: Phaser.KeyCode.LEFT
-            p2_rock: Phaser.KeyCode.DOWN
+            p2_rock: Phaser.KeyCode.LEFT
+            p2_paper: Phaser.KeyCode.DOWN
             p2_scissors: Phaser.KeyCode.RIGHT
 
         @game.time.desiredFps = 60
@@ -344,6 +348,7 @@ class GameState
         if @player1.health <= 0
             @player1.sprite.animations.play('die')
             @player2.sprite.animations.play('transform').onComplete.add =>
+                @game.add.audio(@player2.attack + '-wins').play()
                 final = @game.add.sprite(@player2.sprite.x + 150, @player2.sprite.y - 250, @player2.attack)
                 final.scale.setTo(-2, 2)
                 final.animations.add('transform', [0,1,2], 2, false).onComplete.add =>
@@ -353,7 +358,8 @@ class GameState
         else if @player2.health <= 0
             @player2.sprite.animations.play('die')
             @player1.sprite.animations.play('transform').onComplete.add =>
-                final = @game.add.sprite(@player1.sprite.x - 150, @player1.sprite.y - 200, @player1.attack)
+                @game.add.audio(@player1.attack + '-wins').play()
+                final = @game.add.sprite(@player1.sprite.x - 200, @player1.sprite.y - 200, @player1.attack)
                 final.scale.setTo(2, 2)
                 final.animations.add('transform', [0,1,2], 2, false).onComplete.add =>
                     @doFinished()
