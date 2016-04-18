@@ -63,7 +63,7 @@ class PreloadState
             @game.load.image(levelName + '-thumbnail', "backgrounds/#{levelName}-thumbnail.jpg")
 
     create: ->
-        @game.add.audio('bgm').play('', 0, 1, true)
+        @game.add.audio('bgm').play('', 0, 0.7, true)
         @game.state.start('intro')
 
     fileComplete: (progress, cacheKey, success, totalLoaded, totalFiles) =>
@@ -166,6 +166,7 @@ class HowToPlayState
 
 class LevelSelectState
     create: ->
+        @game.add.audio('select-a-stage').play()
         @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'sink')
         @levels = [
             ['arctic', 'city', 'forest']
