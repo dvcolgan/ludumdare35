@@ -1,6 +1,7 @@
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 window.selectedLevel = 'arctic'
+window.player2 = false
 
 
 class BootState
@@ -29,15 +30,27 @@ class PreloadState
         @game.load.spritesheet('player2', 'player2.png', 180, 316, 21)
         @game.load.image('title', 'title.jpg')
         @game.load.image('how-to-play', 'how-to-play.jpg')
+        @game.load.image('how-to-play-ai', 'how-to-play-ai.jpg')
         #@game.load.spritesheet('healthbar-background', 'healthbar-background.png', 560, 50, 3)
         #@game.load.image('healthbar-green', 'healthbar-green.png')
 
         @game.load.audio('bgm', ['audio/bgm.mp3', 'audio/bgm.ogg'])
 
+        @game.load.audio('select-a-stage', ['audio/select-a-stage.mp3', 'audio/select-a-stage.ogg'])
+        @game.load.audio('fight', ['audio/fight.mp3', 'audio/fight.ogg'])
+        @game.load.audio('mortal-ro-sham-bo', ['audio/mortal-ro-sham-bo.mp3', 'audio/mortal-ro-sham-bo.ogg'])
+
         @game.load.image('intro1', 'intro1.png')
-        @game.load.image('intro2', 'intro2.png')
-        @game.load.image('intro3', 'intro3.png')
-        @game.load.image('intro4', 'intro4.png')
+        @game.load.image('intro2', 'intro1.png')
+        @game.load.image('intro3', 'intro2.png')
+        @game.load.image('intro4', 'intro3.png')
+        @game.load.image('intro5', 'intro4.png')
+
+        @game.load.audio('intro-talk1', ['audio/intro-talk1.mp3', 'audio/intro-talk1.mp3'])
+        @game.load.audio('intro-talk2', ['audio/intro-talk2.mp3', 'audio/intro-talk2.mp3'])
+        @game.load.audio('intro-talk3', ['audio/intro-talk3.mp3', 'audio/intro-talk3.mp3'])
+        @game.load.audio('intro-talk4', ['audio/intro-talk4.mp3', 'audio/intro-talk4.mp3'])
+        @game.load.audio('intro-talk5', ['audio/intro-talk5.mp3', 'audio/intro-talk5.mp3'])
 
         @game.load.spritesheet('rock', 'rock.png', 294, 250, 3)
         @game.load.spritesheet('paper', 'paper.png', 300, 169, 3)
@@ -50,39 +63,56 @@ class PreloadState
             @game.load.image(levelName + '-thumbnail', "backgrounds/#{levelName}-thumbnail.jpg")
 
     create: ->
-        @game.add.audio('bgm').play()
-        #@game.state.start('intro')
+        @game.add.audio('bgm').play('', 0, 1, true)
+        @game.state.start('intro')
 
     fileComplete: (progress, cacheKey, success, totalLoaded, totalFiles) =>
         @progressbarGreen.scale.x = progress / 100
 
 
 class IntroState
-    showScene: (which, text) ->
+    showScene: (which) ->
         if @background? then @background.destroy()
         if @text? then @text.destroy()
         @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'intro' + which)
-        @text = @game.add.text(30, 500, text, {
+        @game.add.audio('intro-talk' + which).play()
+        @text = @game.add.text(30, 30, @texts[which-1], {
             fill: 'white'
-            font: '60px bold monospace'
+            stroke: 'black'
+            strokeThickness: 6
+            font: '80px bold monospace'
         })
 
     create: ->
+        @durations = [
+            2500
+            2500
+            2500
+            2500
+            3500
+        ]
+        @texts = [
+            'One slice left...'
+            'I only had one. It\'s mine!'
+            'Yours was half the pie!'
+            'Only one way to settle this...'
+            'RO SHAM BO!!!'
+        ]
         @background = null
         @text = null
         @current = 1
         @showScene(@current)
 
-        @switchTime = @game.time.now + 5000
+        @switchTime = @game.time.now + @durations[0]
         @spacebar = @game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR)
 
     update: ->
         if @game.time.now >= @switchTime
             @current++
-            if @current >= 5
+            if @current >= 6
                 @game.state.start('title')
             else
-                @switchTime = @game.time.now + 5000
+                @switchTime = @game.time.now + @durations[@current-1]
                 @showScene(@current, '')
 
 
@@ -93,28 +123,40 @@ class IntroState
 class TitleState
     create: ->
         @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'title')
-        @startText = @game.add.text(30, 500, 'DEPRESS\nSPACEBAR', {
+        @startText = @game.add.text(30, 400, 'DEPRESS\nSPACEBAR\nTO FIGHT\nTHE COMPUTER', {
+            fill: 'white'
+            font: '60px bold monospace'
+        })
+        @startText2 = @game.add.text(980, 320, 'DEPRESS\nENTER\nTO FIGHT\nA FRIEND\nHOTSEAT', {
             fill: 'white'
             font: '60px bold monospace'
         })
         @flipperTime = @game.time.now + 700
         @spacebar = @game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR)
+        @enter = @game.input.keyboard.addKey(Phaser.KeyCode.ENTER)
+        @game.add.audio('mortal-ro-sham-bo').play()
 
     update: ->
         if @game.time.now >= @flipperTime
             @startText.visible = not @startText.visible
+            @startText2.visible = not @startText2.visible
             if @startText.visible
                 @flipperTime = @game.time.now + 700
             else
                 @flipperTime = @game.time.now + 200
 
         if @spacebar.justDown
+            window.player2 = false
+            @game.state.start('how-to-play')
+
+        if @enter.justDown
+            window.player2 = true
             @game.state.start('how-to-play')
 
 
 class HowToPlayState
     create: ->
-        @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'how-to-play')
+        @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (if window.player2 then 'how-to-play' else 'how-to-play-ai'))
         @spacebar = @game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR)
 
     update: ->
@@ -283,7 +325,7 @@ class GameState
 
     doCountdown: ->
         @combatState = 'countdown'
-        @startTime = @game.time.now + 100 #5000
+        @startTime = @game.time.now + 5000
         @countdownDisplay = @game.add.text 1, 0, '',
             fill: 'white'
             stroke: 'black'
@@ -328,7 +370,10 @@ class GameState
         if @combatState == 'countdown'
             remaining = Math.floor((@startTime - @game.time.now) / 1000)
             display = remaining - 1
-            if display == 0 then display = 'FIGHT!'
+            if display == 0
+                display = 'FIGHT!'
+                if @countdownDisplay.text == '1'
+                    @game.add.audio('fight').play()
             @countdownDisplay.text = display.toString()
 
             if remaining <= 0
