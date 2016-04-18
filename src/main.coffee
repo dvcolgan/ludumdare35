@@ -15,9 +15,10 @@ class BootState
 class PreloadState
     preload: ->
         @game.load.onFileComplete.add(@fileComplete)
+        @game.stage.backgroundColor = '#cccccc'
 
-        barX = 400
-        barY = 300
+        barX = SCREEN_WIDTH/2 - 560/2
+        barY = SCREEN_HEIGHT/2 - 50/2
         @progressbarBackground = @game.add.sprite(barX, barY, 'healthbar-background')
         @progressbarBackground.animations.add('glow', [0,0,0,0,0,0,0,0,0,1,2], 10, true)
         @progressbarBackground.animations.play('glow')
@@ -50,10 +51,10 @@ class PreloadState
 
     create: ->
         @game.add.audio('bgm').play()
-        @game.state.start('intro')
+        #@game.state.start('intro')
 
     fileComplete: (progress, cacheKey, success, totalLoaded, totalFiles) =>
-        @progressbarGreen.scale.x = progress
+        @progressbarGreen.scale.x = progress / 100
 
 
 class IntroState
