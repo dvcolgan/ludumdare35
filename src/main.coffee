@@ -260,7 +260,7 @@ class LevelSelectState
 class GameState
     makePlayer: (x, y, healthbarX, healthbarY, spriteKey, animations) ->
         sprite = @game.add.sprite(x, y, spriteKey)
-        sprite.animations.add('pose', animations.pose, 10, true)
+        sprite.animations.add('pose', animations.pose, 5, true)
         sprite.animations.add('idle', animations.idle, 5, true)
         sprite.animations.add('paper', animations.paper, 10, true)
         sprite.animations.add('scissors', animations.scissors, 10, true)
@@ -270,7 +270,7 @@ class GameState
         sprite.animations.add('transform', animations.transform, 10, false)
         sprite.anchor.setTo(0.5, 0.5)
         attack = 'idle'
-        sprite.animations.play('idle')
+        sprite.animations.play('pose')
 
         health = 100
         healthbarBackground = @game.add.sprite(healthbarX, healthbarY, 'healthbar-background')
@@ -315,7 +315,7 @@ class GameState
         @player1.sprite.scale.y = 3
 
         @player2 = @makePlayer SCREEN_WIDTH/2 + 100, SCREEN_HEIGHT/2 + 40, SCREEN_WIDTH/2 + 40, 40, 'player2',
-            pose: [3,4,11]
+            pose: [3,4]
             idle: [15,16,17]
             paper: [7,6,7]
             scissors: [3,4,5]
@@ -341,6 +341,8 @@ class GameState
         @countdownDisplay.setTextBounds(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
     doStartRound: ->
+        @player1.sprite.animations.play('idle')
+        @player2.sprite.animations.play('idle')
         @countdownDisplay.destroy()
         @combatState = 'during'
 
