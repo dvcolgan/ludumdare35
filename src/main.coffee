@@ -394,6 +394,14 @@ class GameState
                 tween.start()
                 final.animations.play('transform')
                 @player2.sprite.destroy()
+                @finalText = @game.add.text 0, 0, 'HIT SPACE TO PLAY AGAIN',
+                    fill: 'white'
+                    stroke: 'black'
+                    strokeThickness: 12
+                    boundsAlignH: 'center'
+                    boundsAlignV: 'middle'
+                    font: '90px bold monospace'
+                @finalText.setTextBounds(0, SCREEN_HEIGHT - 120, SCREEN_WIDTH, 120)
         else if @player2.health <= 0
             @player2.sprite.animations.play('die')
             @player1.sprite.animations.play('transform').onComplete.add =>
@@ -408,15 +416,16 @@ class GameState
                 tween.start()
                 final.animations.play('transform')
                 @player1.sprite.destroy()
+
+                @finalText = @game.add.text 0, 0, 'HIT SPACE TO PLAY AGAIN',
+                    fill: 'white'
+                    stroke: 'black'
+                    strokeThickness: 12
+                    boundsAlignH: 'center'
+                    boundsAlignV: 'middle'
+                    font: '90px bold monospace'
+                @finalText.setTextBounds(0, SCREEN_HEIGHT - 120, SCREEN_WIDTH, 120)
         @combatState = 'over'
-        @finalText = @game.add.text 0, 0, 'HIT SPACE TO PLAY AGAIN',
-            fill: 'white'
-            stroke: 'black'
-            strokeThickness: 12
-            boundsAlignH: 'center'
-            boundsAlignV: 'middle'
-            font: '90px bold monospace'
-        @finalText.setTextBounds(0, SCREEN_HEIGHT - 120, SCREEN_WIDTH, 120)
 
     doFinished: =>
         @combatState = 'finished'
