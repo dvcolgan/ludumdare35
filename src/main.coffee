@@ -1,5 +1,6 @@
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
+MAX_HEALTH = 1000
 window.selectedLevel = 'arctic'
 window.player2 = false
 
@@ -129,10 +130,14 @@ class TitleState
         @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 'title')
         @startText = @game.add.text(30, 400, 'DEPRESS\nSPACEBAR\nTO FIGHT\nTHE COMPUTER', {
             fill: 'white'
+            stroke: 'black'
+            strokeThickness: 6
             font: '60px bold monospace'
         })
         @startText2 = @game.add.text(980, 320, 'DEPRESS\nENTER\nTO FIGHT\nA FRIEND\nHOTSEAT', {
             fill: 'white'
+            stroke: 'black'
+            strokeThickness: 6
             font: '60px bold monospace'
         })
         @flipperTime = @game.time.now + 700
@@ -262,9 +267,9 @@ class GameState
         sprite = @game.add.sprite(x, y, spriteKey)
         sprite.animations.add('pose', animations.pose, 5, true)
         sprite.animations.add('idle', animations.idle, 5, true)
-        sprite.animations.add('paper', animations.paper, 10, true)
-        sprite.animations.add('scissors', animations.scissors, 10, true)
-        sprite.animations.add('rock', animations.rock, 10, true)
+        sprite.animations.add('paper', animations.paper, 5, true)
+        sprite.animations.add('scissors', animations.scissors, 5, true)
+        sprite.animations.add('rock', animations.rock, 5, true)
         sprite.animations.add('hit', animations.hit, 10, false)
         sprite.animations.add('die', animations.die, 10, false)
         sprite.animations.add('transform', animations.transform, 10, false)
@@ -272,7 +277,7 @@ class GameState
         attack = 'idle'
         sprite.animations.play('pose')
 
-        health = 100
+        health = MAX_HEALTH
         healthbarBackground = @game.add.sprite(healthbarX, healthbarY, 'healthbar-background')
         healthbarBackground.animations.add('glow', [0,0,0,0,0,0,0,0,0,1,2], 10, true)
         healthbarBackground.animations.play('glow')
@@ -302,7 +307,7 @@ class GameState
 
         @background = @game.add.tileSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, selectedLevel)
 
-        @player1 = @makePlayer SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT/2 + 40, 40, 40, 'player1',
+        @player1 = @makePlayer SCREEN_WIDTH/2 - 200, SCREEN_HEIGHT/2 + 40, 40, 40, 'player1',
             pose: [31,32,33]
             idle: [6,7,9]
             paper: [31, 24]
@@ -310,11 +315,11 @@ class GameState
             rock: [20]
             hit: [21,22]
             die: [21,22]
-            transform: [16,17,18,19]
+            transform: [16,17,18,19,18,19,18,19,18]
         @player1.sprite.scale.x = -3
         @player1.sprite.scale.y = 3
 
-        @player2 = @makePlayer SCREEN_WIDTH/2 + 100, SCREEN_HEIGHT/2 + 40, SCREEN_WIDTH/2 + 40, 40, 'player2',
+        @player2 = @makePlayer SCREEN_WIDTH/2 + 200, SCREEN_HEIGHT/2 + 40, SCREEN_WIDTH/2 + 40, 40, 'player2',
             pose: [3,4]
             idle: [15,16,17]
             paper: [7,6,7]
@@ -322,11 +327,36 @@ class GameState
             rock: [0,1,2]
             hit: [9,10,11]
             die: [9,10,11]
-            transform: [12,5,14,13]
+            transform: [12,5,14,13,5,13,5,13,5]
         @player2.sprite.scale.x = 1.7
         @player2.sprite.scale.y = 1.7
 
+        @p1hud = @makeHud(@player1.sprite.x + 100, @player1.sprite.y - 50, false)
+        @p2hud = @makeHud(@player2.sprite.x - 100, @player2.sprite.y - 50, true)
+
         @doCountdown()
+
+    makeHud: (x, y, flip) ->
+        console.log(x, y)
+        rock = @game.add.sprite(x, y, 'rock')
+        rock.animations.add('run', [0,1,2], 3, true)
+        rock.animations.play('run')
+        rock.anchor.set(0.5)
+        rock.scale.x = 0.4 * (if flip then -1 else 1)
+        rock.scale.y = 0.4
+        paper = @game.add.sprite(x, y, 'paper')
+        paper.animations.add('run', [0,1,2], 3, true)
+        paper.animations.play('run')
+        paper.anchor.set(0.5)
+        paper.scale.x = 0.4 * (if flip then -1 else 1)
+        paper.scale.y = 0.4
+        scissors = @game.add.sprite(x, y, 'scissors')
+        scissors.animations.add('run', [0,1,2], 3, true)
+        scissors.animations.play('run')
+        scissors.anchor.set(0.5)
+        scissors.scale.x = 0.4 * (if flip then -1 else 1)
+        scissors.scale.y = 0.4
+        {rock, paper, scissors, idle: {visible: true}}
 
     doCountdown: ->
         @combatState = 'countdown'
@@ -345,36 +375,77 @@ class GameState
         @player2.sprite.animations.play('idle')
         @countdownDisplay.destroy()
         @combatState = 'during'
+        @nextAIAttack = null
 
     doEndRound: ->
+        @player1.healthbarGreen.scale.x = @player1.health / MAX_HEALTH
+        @player2.healthbarGreen.scale.x = @player2.health / MAX_HEALTH
         if @player1.health <= 0
             @player1.sprite.animations.play('die')
             @player2.sprite.animations.play('transform').onComplete.add =>
                 @game.add.audio(@player2.attack + '-wins').play()
-                final = @game.add.sprite(@player2.sprite.x + 150, @player2.sprite.y - 250, @player2.attack)
+                final = @game.add.sprite(@player2.sprite.x, @player2.sprite.y, @player2.attack)
+                final.anchor.setTo(0.5)
                 final.scale.setTo(-2, 2)
-                final.animations.add('transform', [0,1,2], 2, false).onComplete.add =>
+                final.animations.add('transform', [0,1,2], 2, true)
+                tween = @game.add.tween(final).to(x: @player1.sprite.x)
+                tween.onComplete.add =>
                     @doFinished()
+                tween.start()
                 final.animations.play('transform')
                 @player2.sprite.destroy()
         else if @player2.health <= 0
             @player2.sprite.animations.play('die')
             @player1.sprite.animations.play('transform').onComplete.add =>
                 @game.add.audio(@player1.attack + '-wins').play()
-                final = @game.add.sprite(@player1.sprite.x - 200, @player1.sprite.y - 200, @player1.attack)
+                final = @game.add.sprite(@player1.sprite.x, @player1.sprite.y, @player1.attack)
+                final.anchor.setTo(0.5)
                 final.scale.setTo(2, 2)
-                final.animations.add('transform', [0,1,2], 2, false).onComplete.add =>
+                final.animations.add('transform', [0,1,2], 2, true)
+                tween = @game.add.tween(final).to(x: @player2.sprite.x)
+                tween.onComplete.add =>
                     @doFinished()
+                tween.start()
                 final.animations.play('transform')
                 @player1.sprite.destroy()
         @combatState = 'over'
+        @finalText = @game.add.text 0, 0, 'HIT SPACE TO PLAY AGAIN',
+            fill: 'white'
+            stroke: 'black'
+            strokeThickness: 12
+            boundsAlignH: 'center'
+            boundsAlignV: 'middle'
+            font: '90px bold monospace'
+        @finalText.setTextBounds(0, SCREEN_HEIGHT - 120, SCREEN_WIDTH, 120)
 
     doFinished: =>
         @combatState = 'finished'
 
+    updateHuds: ->
+        if @combatState == 'during'
+            if not @p1hud[@player1.attack].visible
+                @p1hud.rock.visible = @player1.attack == 'rock'
+                @p1hud.paper.visible = @player1.attack == 'paper'
+                @p1hud.scissors.visible = @player1.attack == 'scissors'
+                @p1hud.idle.visible = @player1.attack == 'idle'
+            if not @p2hud[@player2.attack].visible
+                @p2hud.rock.visible = @player2.attack == 'rock'
+                @p2hud.paper.visible = @player2.attack == 'paper'
+                @p2hud.scissors.visible = @player2.attack == 'scissors'
+                @p2hud.idle.visible = @player2.attack == 'idle'
+        else
+            @p1hud.rock.visible = false
+            @p1hud.paper.visible = false
+            @p1hud.scissors.visible = false
+            @p1hud.idle.visible = false
+            @p2hud.rock.visible = false
+            @p2hud.paper.visible = false
+            @p2hud.scissors.visible = false
+            @p2hud.idle.visible = false
+
     update: ->
-        @player1.healthbarGreen.scale.x = @player1.health / 100
-        @player2.healthbarGreen.scale.x = @player2.health / 100
+        @player1.healthbarGreen.scale.x = @player1.health / MAX_HEALTH
+        @player2.healthbarGreen.scale.x = @player2.health / MAX_HEALTH
 
         if @combatState == 'countdown'
             remaining = Math.floor((@startTime - @game.time.now) / 1000)
@@ -391,7 +462,6 @@ class GameState
 
         else if @combatState == 'during'
 
-            console.log(@player1.health, @player2.health)
             if @player1.health <= 0 or @player2.health <= 0
                 @doEndRound()
                 return
@@ -408,43 +478,56 @@ class GameState
             if @player1.attack != @player1.sprite.animations.currentAnim.name
                 @player1.sprite.animations.play(@player1.attack)
 
-            if @keys.p2_paper.isDown or @keys.p2_rock.isDown or @keys.p2_scissors.isDown
-                if @keys.p2_paper.isDown
-                    @player2.attack = 'paper'
-                if @keys.p2_rock.isDown
-                    @player2.attack = 'rock'
-                if @keys.p2_scissors.isDown
-                    @player2.attack = 'scissors'
+            if window.player2
+                if @keys.p2_paper.isDown or @keys.p2_rock.isDown or @keys.p2_scissors.isDown
+                    if @keys.p2_paper.isDown
+                        @player2.attack = 'paper'
+                    if @keys.p2_rock.isDown
+                        @player2.attack = 'rock'
+                    if @keys.p2_scissors.isDown
+                        @player2.attack = 'scissors'
+                else
+                    @player2.attack = 'idle'
             else
-                @player2.attack = 'idle'
+                if @nextAIAttack?
+                    if @game.time.now > @nextAIAttack
+                        @player2.attack = ['rock', 'paper', 'scissors', 'idle'][Math.floor(Math.random() * 4)]
+                        @nextAIAttack = @game.time.now + (Math.random() * 1000) + 500
+                        if @player2.attack == 'idle'
+                            @nextAIAttack = @game.time.now + (Math.random() * 800)
+                else
+                    @player2.attack = ['rock', 'paper', 'scissors'][Math.floor(Math.random() * 3)]
+                    @nextAIAttack = @game.time.now + (Math.random() * 1000) + 500
+
             if @player2.attack != @player2.sprite.animations.currentAnim.name
                 @player2.sprite.animations.play(@player2.attack)
 
+
             if @player1.attack != @player2.attack
-                if @player1.attack == 'paper' and @player2.attack == 'scissors'
+                if @player1.attack == 'rock' and @player2.attack == 'scissors'
                     @player2.health -= 2
-                if @player1.attack == 'scissors' and @player2.attack == 'rock'
+                if @player1.attack == 'paper' and @player2.attack == 'rock'
                     @player2.health -= 2
-                if @player1.attack == 'rock' and @player2.attack == 'paper'
+                if @player1.attack == 'scissors' and @player2.attack == 'paper'
                     @player2.health -= 2
                 if @player2.attack == 'idle'
                     @player2.health -= 1
 
             if @player2.attack != @player1.attack
-                if @player2.attack == 'paper' and @player1.attack == 'scissors'
+                if @player2.attack == 'rock' and @player1.attack == 'scissors'
                     @player1.health -= 2
-                if @player2.attack == 'scissors' and @player1.attack == 'rock'
+                if @player2.attack == 'paper' and @player1.attack == 'rock'
                     @player1.health -= 2
-                if @player2.attack == 'rock' and @player1.attack == 'paper'
+                if @player2.attack == 'scissors' and @player1.attack == 'paper'
                     @player1.health -= 2
                 if @player1.attack == 'idle'
                     @player1.health -= 1
 
-        #else if @combatState == 'over'
-        #    null
         else if @combatState == 'finished'
             if @keys.spacebar.justDown
                 @game.state.start('levelselect')
+
+        @updateHuds()
 
 
 class WinLoseState

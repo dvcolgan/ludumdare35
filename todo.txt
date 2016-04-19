@@ -1,14 +1,3 @@
-Put in sounds, maybe with sound sprites?  https://github.com/tonistiigi/audiosprite
-
-Player
-Minor enemies
-Boss
-
-Every actor needs it's own mailbox and then global events
-
-Actor has an event list that is added to by any event
-
-Can set a repeat method that will add new actions if queue is empty
-
-Invincibility frames for the player
-
+Show what the current attack is
+Add a time delay to the final animation
+Make title screen
